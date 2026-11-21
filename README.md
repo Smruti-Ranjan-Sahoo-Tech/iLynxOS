@@ -14,6 +14,10 @@
 [![Download APK](https://img.shields.io/badge/Download-iLynxOS_APK_(v1.03)-FF6B00?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Smruti-Ranjan-Sahoo-Tech/iLynxOS/raw/main/iLynxOS-v1.03-NobleModern.apk)
 [![Download Rootfs](https://img.shields.io/badge/Download-iLynx.tar.gz_(Google_Drive)-4285F4?style=for-the-badge&logo=google-drive&logoColor=white)](https://drive.google.com/drive/folders/1NccoZ5Rzscwexz7wHoOnbkjgeeWpkwaf)
 
+<br/><br/>
+
+<img src="images/poster-image/image.png" width="100%" alt="iLynxOS 1.03 Noble Modern Edition" style="border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); margin-bottom: 20px;" />
+
 </div>
 
 ---
@@ -48,6 +52,131 @@ iLynxOS enables a smartphone to become a complete personal computer whenever the
 > [!IMPORTANT]
 > **What iLynxOS is and is not:**  
 > iLynxOS provides a rootless Linux userspace running entirely on top of Android via PRoot syscall interception and an embedded X11 server. It does **not** flash, replace, or modify your Android operating system, bootloader, or Android security partitions. It runs safely as a standard Android application without requiring root access.
+
+---
+
+## 📸 Visual Showcase & Gallery
+
+### 🖥️ 1. Linux Desktop Experience (LXQt Modern Desktop)
+
+Experience a full-fledged, hardware-accelerated Linux desktop environment right on your Android smartphone display or wirelessly cast to external screens:
+
+<table align="center" width="100%">
+  <tr>
+    <td align="center" width="50%" valign="top">
+      <a href="images/desktop-image/image1.png">
+        <img src="images/desktop-image/image1.png" alt="Pristine LXQt Modern Desktop" width="100%" style="border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.25);" />
+      </a>
+      <br/>
+      <b>Pristine LXQt Modern Workspace</b>
+      <br/>
+      <sub>Clean workstation layout with dark abstract styling, quick-access application dock, desktop shortcuts (VS Code, Firefox, VLC, Store), and integrated system tray.</sub>
+    </td>
+    <td align="center" width="50%" valign="top">
+      <a href="images/desktop-image/image2.png">
+        <img src="images/desktop-image/image2.png" alt="Application Launcher Menu" width="100%" style="border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.25);" />
+      </a>
+      <br/>
+      <b>Application Launcher & Menu</b>
+      <br/>
+      <sub>Categorized start menu delivering instant access to installed desktop suites across Development, Internet, Graphics, Multimedia, and System Utilities.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%" valign="top">
+      <a href="images/desktop-image/image3.png">
+        <img src="images/desktop-image/image3.png" alt="i-Lynx Store Software Center" width="100%" style="border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.25);" />
+      </a>
+      <br/>
+      <b>i-Lynx Store (Software Center)</b>
+      <br/>
+      <sub>Curated graphical app store for one-click installation of desktop applications, creative suites, programming runtimes, and over 94,000 repository packages.</sub>
+    </td>
+    <td align="center" width="50%" valign="top">
+      <a href="images/desktop-image/image4.png">
+        <img src="images/desktop-image/image4.png" alt="Personalisation and Desktop Control" width="100%" style="border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.25);" />
+      </a>
+      <br/>
+      <b>i-Personalisation & Desktop Control</b>
+      <br/>
+      <sub>Custom control hub for managing wallpapers, taskbar appearance themes, system icon packs, and environment personalization options.</sub>
+    </td>
+  </tr>
+</table>
+
+---
+
+### 📱 2. Native Android Control Center (Warm Modern Fluent UI)
+
+The native Android host application is engineered with Jetpack Compose, featuring an adaptive edge-to-edge layout with full status bar and camera cutout inset awareness:
+
+<table align="center" width="100%">
+  <tr>
+    <td align="center" width="33%" valign="top">
+      <a href="images/application-ui-image/image1.png">
+        <img src="images/application-ui-image/image1.png" alt="Welcome & Onboarding Screen" width="100%" style="border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.25);" />
+      </a>
+      <br/>
+      <b>1. Welcome & Overview</b>
+      <br/>
+      <sub>Architectural walkthrough showcasing in-process native X11 acceleration without external display servers.</sub>
+    </td>
+    <td align="center" width="33%" valign="top">
+      <a href="images/application-ui-image/image2.png">
+        <img src="images/application-ui-image/image2.png" alt="Rootfs Installer Screen" width="100%" style="border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.25);" />
+      </a>
+      <br/>
+      <b>2. Environment Installer</b>
+      <br/>
+      <sub>Automated disk space pre-check (~4.2 GB required) and Storage Access Framework (SAF) rootfs archive picker.</sub>
+    </td>
+    <td align="center" width="33%" valign="top">
+      <a href="images/application-ui-image/image3.png">
+        <img src="images/application-ui-image/image3.png" alt="Main Dashboard Screen" width="100%" style="border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.25);" />
+      </a>
+      <br/>
+      <b>3. Unified Dashboard</b>
+      <br/>
+      <sub>Real-time session status card, 1-tap desktop launch, wireless remote banner, and quick navigation hub.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="33%" valign="top">
+      <a href="images/application-ui-image/image4.png">
+        <img src="images/application-ui-image/image4.png" alt="Wireless Desktop Hub" width="100%" style="border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.25);" />
+      </a>
+      <br/>
+      <b>4. Wireless Desktop Hub</b>
+      <br/>
+      <sub>Automatic local Wi-Fi interface IP discovery (`ap0`/`wlan0`), status monitoring, and master service control.</sub>
+    </td>
+    <td align="center" width="33%" valign="top">
+      <a href="images/application-ui-image/image5.png">
+        <img src="images/application-ui-image/image5.png" alt="Dual RFB & Web Streaming Manager" width="100%" style="border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.25);" />
+      </a>
+      <br/>
+      <b>5. Dual Streaming Services</b>
+      <br/>
+      <sub>Ultra-responsive VNC RFB mode (port 5900/5901) & HTML5 Web Mode (port 14500) supporting dedicated virtual sessions (`:1`) and screen mirroring (`:0`).</sub>
+    </td>
+    <td align="center" width="33%" valign="top">
+      <a href="images/application-ui-image/image6.png">
+        <img src="images/application-ui-image/image6.png" alt="Instant QR Code Access Screen" width="100%" style="border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.25);" />
+      </a>
+      <br/>
+      <b>6. Instant QR Browser Connect</b>
+      <br/>
+      <sub>Zero-software-install connection: scan QR with any PC, tablet, or phone on Wi-Fi to immediately view the desktop.</sub>
+    </td>
+  </tr>
+</table>
+
+The **iLynxOS Warm Modern Fluent UI** provides a unified control center for managing Linux desktop sessions, monitoring real-time system state, launching terminal environments, and broadcasting remote display streams:
+
+- **Top Application Header**: Clean typography with dynamic notch and status bar inset padding (`Modifier.statusBarsPadding()`) that prevents camera cutout overlap.
+- **Desktop Session Card**: Shows real-time session state (`RUNNING (:0)`, `STARTING`, or `STOPPED`) with direct **Open Desktop** and **Stop** action controls.
+- **Wireless Desktop Banner**: One-tap access to RFB/VNC and HTML5 Web remote control streaming.
+- **Quick Navigation Hub**: High-contrast squircles for fast access to the **PRoot Root Shell**, **Display & Input Settings**, and **System Information**.
 
 ---
 
