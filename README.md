@@ -237,10 +237,10 @@ iLynxOS solves every layer of this problem through an integrated, ground-up engi
    - **Drag Lock**: One-tap toggle to hold down the left button while making complex window selections.
 
 4. **Dual Wireless Desktop Subsystem (Workstation Anywhere)**:
-   - **Dedicated Virtual Desktop Session (`:1`)**: Launches an isolated 1920×1080@24bpp virtual workstation powered by `Xvfb` running Openbox, `pcmanfm-qt`, and `lxqt-panel`. Provides true 60 FPS remote responsiveness with 100% native mouse and keyboard input fidelity, completely decoupled from the smartphone screen.
+   - **Dedicated Virtual Desktop Session (`:1`)**: Launches an isolated virtual workstation powered by high-performance `vncserver` (`Xvnc :1`) with Openbox and LXQt components (default 1280×720 or 1920×1080, password `raja1234`), with fallback to `Xvfb + x11vnc`. Delivers ultra-responsive 60 FPS remote responsiveness with 100% native mouse and keyboard input fidelity, completely decoupled from the smartphone screen.
    - **Mirror Phone Screen Mode (`:0`)**: Allows broadcasting the active smartphone display directly to remote monitors, PCs, and tablets.
-   - **Zero-Install HTML5 Web Mode**: Integrated `websockify` + `noVNC` web server on port 14500. Connect instantly from any modern web browser on the local network by scanning the on-screen QR code—no external software installation required.
-   - **Native RFB / VNC Support**: Streamlines standard VNC connections on port 5900/5901 with optimized frame rendering and zero PRoot mutex contention.
+   - **Zero-Install HTML5 Web Mode**: Integrated `websockify` + `noVNC` web server on port 14500 connecting directly to the `:1` virtual workstation backend. Connect instantly from any modern web browser on the local network by scanning the on-screen QR code—no external software installation required.
+   - **One-Command CLI Controls**: Standalone launchers `vncstart` / `vncstart.sh` and `vncstop` / `vncstop.sh` accessible from root and `/usr/local/bin`.
 
 5. **Edge-to-Edge Adaptive UI & Scrollable Fluent Toolbar**:
    Built with Jetpack Compose featuring full edge-to-edge window insets that gracefully dodge camera punch holes and system navigation bars. The in-desktop floating toolbar maintains an **identical 10-tool control suite across both portrait (vertical) and landscape (horizontal) orientations**, equipped with an inside horizontal scroll container so no controls are ever cut off.
@@ -261,7 +261,7 @@ Traditional Linux applications expect an X11 server running as a distinct system
 Standard VNC servers rely on the XDamage extension to detect changed rectangles on screen. Because embedded mobile X11 servers (`libXlorie`) bypass standard X11 compositors and tie frame updates to Android's Choreographer, remote VNC clients attaching to `:0` would often see only a static image, while synthetic XTEST mouse and keyboard events were dropped. Furthermore, multi-threaded VNC servers (`-threads`) suffer severe mutex contention and latency under PRoot `ptrace` syscall interception.
 
 iLynxOS resolves this through a dual-mode display architecture:
-1. **Dedicated Virtual Session (`:1`)**: Launches an in-memory virtual X11 server via `Xvfb :1 -screen 0 1920x1080x24` running Openbox and LXQt components with native XDamage support. This completely eliminates polling delays and ptrace thread deadlocks, delivering sub-20ms latency and 100% mouse and keyboard fidelity for remote viewers without affecting the phone display.
+1. **Dedicated Virtual Session (`:1`)**: Launches an in-memory virtual X11 server via native `vncserver :1 -geometry 1280x720 -depth 24 -ac` (or `Xvfb :1` fallback) running Openbox and LXQt components with native XDamage support. This completely eliminates polling delays and ptrace thread deadlocks, delivering sub-20ms latency and 100% mouse and keyboard fidelity for remote viewers without affecting the phone display.
 2. **Optimized Screen Mirroring (`:0`)**: When mirroring the smartphone screen, single-threaded `x11vnc` with calibrated socket polling delivers a fluid stream without hanging PRoot processes:
 ```bash
 x11vnc -display :0 -rfbport 5900 -listen 0.0.0.0 -forever -shared -repeat -noshm -bg

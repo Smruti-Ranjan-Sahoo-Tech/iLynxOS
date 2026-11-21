@@ -24,7 +24,7 @@ class VncServerManager(private val context: Context) {
         private const val KEY_PASSWORD = "vnc_password"
         private const val KEY_ENABLED = "vnc_enabled"
         private const val KEY_SESSION_MODE = "vnc_session_mode"
-        const val DEFAULT_PORT = 5900
+        const val DEFAULT_PORT = 5901
     }
 
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -43,8 +43,7 @@ class VncServerManager(private val context: Context) {
 
     init {
         if (getPassword().isEmpty()) {
-            val autoPass = "ilynx" + UUID.randomUUID().toString().take(4)
-            setPassword(autoPass)
+            setPassword("raja1234")
         }
     }
 
@@ -86,7 +85,8 @@ class VncServerManager(private val context: Context) {
             return@withContext false
         }
 
-        setPort(port)
+        val effectivePort = if (newSession && port == 5900) 5901 else if (!newSession && port == 5901) 5900 else port
+        setPort(effectivePort)
         setPassword(password)
         setNewSession(newSession)
 
@@ -122,37 +122,37 @@ class VncServerManager(private val context: Context) {
         // 3. Write IPC request to tmpDir (watched by supervisor loop in PRoot desktop session)
         try {
             val reqFile = File(envManager.tmpDir, "vnc_start.req")
-            reqFile.writeText("$port\n$password\n$dispNum\n")
-            Log.i(TAG, "Written vnc_start.req (port: $port, disp: $dispNum)")
+            reqFile.writeText("$effectivePort\n$password\n$dispNum\n")
+            Log.i(TAG, "Written vnc_start.req (port: $effectivePort, disp: $dispNum)")
         } catch (e: Exception) {
             Log.e(TAG, "Failed writing vnc_start.req: ${e.message}")
         }
 
         // Trigger startup immediately to eliminate delay
         try {
-            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh $port '$password' $dispNum &") {}
+            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh $effectivePort '$password' $dispNum 1280x720 &") {}
         } catch (_: Exception) {}
 
         // 4. Poll for socket availability
         var socketOpen = false
         for (i in 1..25) {
             kotlinx.coroutines.delay(150)
-            if (checkSocketListening(port)) {
-                Log.i(TAG, "VNC server detected listening on port $port (attempt $i)")
+            if (checkSocketListening(effectivePort)) {
+                Log.i(TAG, "VNC server detected listening on port $effectivePort (attempt $i)")
                 socketOpen = true
                 break
             }
         }
 
         val ip = networkDiscovery.getFreshNetworkInfo().ipAddress
-        val address = if (ip != null) "$ip:$port" else "localhost:$port"
+        val address = if (ip != null) "$ip:$effectivePort" else "localhost:$effectivePort"
 
         _state.value = ServiceState(
             status = if (socketOpen) ServiceStatus.RUNNING else ServiceStatus.STOPPED,
-            port = port,
+            port = effectivePort,
             address = if (socketOpen) address else null,
             pid = null,
-            error = if (!socketOpen) "Failed to bind VNC port $port" else null
+            error = if (!socketOpen) "Failed to bind VNC port $effectivePort" else null
         )
 
         return@withContext socketOpen

@@ -416,17 +416,19 @@ class LinuxEnvironmentManager(private val context: Context) {
                     rm -f /tmp/vnc.status /tmp/web.status
                     while true; do
                         if [ -f "/tmp/vnc_start.req" ]; then
-                            VNC_PORT=${'$'}(head -n 1 /tmp/vnc_start.req 2>/dev/null || echo "5900")
-                            VNC_PASS=${'$'}(sed -n '2p' /tmp/vnc_start.req 2>/dev/null || echo "")
+                            VNC_PORT=${'$'}(head -n 1 /tmp/vnc_start.req 2>/dev/null || echo "5901")
+                            VNC_PASS=${'$'}(sed -n '2p' /tmp/vnc_start.req 2>/dev/null || echo "raja1234")
                             VNC_DISP=${'$'}(sed -n '3p' /tmp/vnc_start.req 2>/dev/null || echo "1")
                             rm -f /tmp/vnc_start.req
                             if [ -x "/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh" ]; then
-                                /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}VNC_PORT" "${'$'}VNC_PASS" "${'$'}VNC_DISP" &
+                                /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}VNC_PORT" "${'$'}VNC_PASS" "${'$'}VNC_DISP" 1280x720 &
                             else
+                                command -v vncserver >/dev/null 2>&1 && vncserver ":${'$'}VNC_DISP" -geometry 1280x720 -depth 24 -ac 2>/dev/null || true
                                 pkill -9 -f x11vnc 2>/dev/null || true
                                 sleep 0.2
                                 mkdir -p /root/.vnc
                                 if [ -n "${'$'}VNC_PASS" ]; then
+                                    printf "%s\n%s\nn\n" "${'$'}VNC_PASS" "${'$'}VNC_PASS" | vncpasswd >/dev/null 2>&1
                                     x11vnc -storepasswd "${'$'}VNC_PASS" /root/.vnc/passwd 2>/dev/null
                                     chmod 600 /root/.vnc/passwd 2>/dev/null || true
                                     AUTH_ARG="-rfbauth /root/.vnc/passwd"
@@ -443,6 +445,8 @@ class LinuxEnvironmentManager(private val context: Context) {
                             if [ -x "/usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh" ]; then
                                 /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh &
                             else
+                                command -v vncserver >/dev/null 2>&1 && vncserver -kill :1 2>/dev/null || true
+                                pkill -9 -f "Xvnc :1" 2>/dev/null || true
                                 pkill -9 -f x11vnc 2>/dev/null || true
                                 rm -f /var/run/x11vnc.pid
                             fi
@@ -451,12 +455,12 @@ class LinuxEnvironmentManager(private val context: Context) {
 
                         if [ -f "/tmp/web_start.req" ]; then
                             WEB_PORT=${'$'}(head -n 1 /tmp/web_start.req 2>/dev/null || echo "14500")
-                            WEB_PASS=${'$'}(sed -n '2p' /tmp/web_start.req 2>/dev/null || echo "")
+                            WEB_PASS=${'$'}(sed -n '2p' /tmp/web_start.req 2>/dev/null || echo "raja1234")
                             USE_TLS=${'$'}(sed -n '3p' /tmp/web_start.req 2>/dev/null || echo "0")
                             WEB_DISP=${'$'}(sed -n '4p' /tmp/web_start.req 2>/dev/null || echo "1")
                             rm -f /tmp/web_start.req
                             if [ -x "/usr/local/share/ilynxos/wireless-desktop/start-web.sh" ]; then
-                                /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}WEB_PORT" "${'$'}WEB_PASS" "${'$'}USE_TLS" "${'$'}WEB_DISP" &
+                                /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}WEB_PORT" "${'$'}WEB_PASS" "${'$'}USE_TLS" "${'$'}WEB_DISP" 1280x720 &
                             fi
                             sleep 0.8
                             if pgrep -f websockify >/dev/null 2>&1; then
@@ -568,7 +572,17 @@ class LinuxEnvironmentManager(private val context: Context) {
                 exec /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}@"
             """.trimIndent())
 
+            writeExecutableScript(File(localBin, "vncstart"), """
+                #!/bin/bash
+                exec /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}@"
+            """.trimIndent())
+
             writeExecutableScript(File(localBin, "stop-vnc"), """
+                #!/bin/bash
+                exec /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh "${'$'}@"
+            """.trimIndent())
+
+            writeExecutableScript(File(localBin, "vncstop"), """
                 #!/bin/bash
                 exec /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh "${'$'}@"
             """.trimIndent())
@@ -578,7 +592,17 @@ class LinuxEnvironmentManager(private val context: Context) {
                 exec /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}@"
             """.trimIndent())
 
+            writeExecutableScript(File(localBin, "webstart"), """
+                #!/bin/bash
+                exec /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}@"
+            """.trimIndent())
+
             writeExecutableScript(File(localBin, "stop-web"), """
+                #!/bin/bash
+                exec /usr/local/share/ilynxos/wireless-desktop/stop-web.sh "${'$'}@"
+            """.trimIndent())
+
+            writeExecutableScript(File(localBin, "webstop"), """
                 #!/bin/bash
                 exec /usr/local/share/ilynxos/wireless-desktop/stop-web.sh "${'$'}@"
             """.trimIndent())
@@ -592,6 +616,62 @@ class LinuxEnvironmentManager(private val context: Context) {
                 #!/bin/bash
                 exec /usr/local/share/ilynxos/wireless-desktop/install.sh "${'$'}@"
             """.trimIndent())
+
+            // Create user home scripts in /root
+            val rootDir = File(rootfsDir, "root")
+            rootDir.mkdirs()
+            writeExecutableScript(File(rootDir, "vncstart.sh"), """
+                #!/bin/bash
+                exec /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}@"
+            """.trimIndent())
+
+            writeExecutableScript(File(rootDir, "vncstop.sh"), """
+                #!/bin/bash
+                exec /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh "${'$'}@"
+            """.trimIndent())
+
+            writeExecutableScript(File(rootDir, "vnc-start.sh"), """
+                #!/bin/bash
+                exec /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}@"
+            """.trimIndent())
+
+            writeExecutableScript(File(rootDir, "vnc-stop.sh"), """
+                #!/bin/bash
+                exec /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh "${'$'}@"
+            """.trimIndent())
+
+            // Setup default ~/.vnc/xstartup
+            val vncConfigDir = File(rootDir, ".vnc")
+            vncConfigDir.mkdirs()
+            val xstartupFile = File(vncConfigDir, "xstartup")
+            if (!xstartupFile.exists()) {
+                writeExecutableScript(xstartupFile, """
+                    #!/bin/bash
+                    unset SESSION_MANAGER
+                    unset DBUS_SESSION_BUS_ADDRESS
+                    export DISPLAY=:1
+
+                    if command -v startlxqt >/dev/null 2>&1; then
+                        exec startlxqt
+                    elif command -v openbox-session >/dev/null 2>&1; then
+                        exec openbox-session
+                    else
+                        xsetroot -solid "#1e1e2e" 2>/dev/null || true
+                        if command -v openbox >/dev/null 2>&1; then
+                            openbox &
+                        fi
+                        if command -v pcmanfm-qt >/dev/null 2>&1; then
+                            pcmanfm-qt --desktop --profile=lxqt &
+                        fi
+                        if command -v lxqt-panel >/dev/null 2>&1; then
+                            lxqt-panel &
+                        elif command -v xfce4-panel >/dev/null 2>&1; then
+                            xfce4-panel --sm-client-disable --disable-wm-check &
+                        fi
+                        wait
+                    fi
+                """.trimIndent())
+            }
 
             Log.i(TAG, "Unpacked wireless desktop scripts and installed /usr/local/bin wrappers.")
         } catch (e: Exception) {

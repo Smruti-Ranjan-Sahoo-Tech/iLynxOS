@@ -47,8 +47,7 @@ class WebDesktopManager(private val context: Context) {
 
     init {
         if (getPassword().isEmpty()) {
-            val autoPass = "ilynx" + UUID.randomUUID().toString().take(4)
-            setPassword(autoPass)
+            setPassword("raja1234")
         }
     }
 
@@ -148,7 +147,7 @@ class WebDesktopManager(private val context: Context) {
 
         // Trigger startup immediately to eliminate delay
         try {
-            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-web.sh $port '$password' $tlsFlag $dispNum &") {}
+            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-web.sh $port '$password' $tlsFlag $dispNum 1280x720 &") {}
         } catch (_: Exception) {}
 
         // Poll for socket availability

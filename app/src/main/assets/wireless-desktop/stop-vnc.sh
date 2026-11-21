@@ -1,14 +1,24 @@
 #!/bin/bash
-# iLynxOS Wireless Desktop - Stop VNC Server
-pkill -9 -f "x11vnc" 2>/dev/null || true
-rm -f /var/run/x11vnc.pid /tmp/vnc_start.req /tmp/vnc.status 2>/dev/null || true
+# =======================================================
+# i-Lynx OS 1.0 - Remote VNC Desktop Stopper
+# =======================================================
 
-# If Web Mode is also not running, clean up virtual display :1
+echo "Stopping i-Lynx OS VNC Server..."
+command -v vncserver >/dev/null 2>&1 && vncserver -kill :1 2>/dev/null || true
+pkill -9 -f "Xvnc :1" 2>/dev/null || true
+pkill -9 -f "Xvnc" 2>/dev/null || true
+pkill -9 -f "x11vnc" 2>/dev/null || true
+
+# If Web Mode is also not running, clean up desktop session and locks
 if ! pgrep -f "websockify" >/dev/null 2>&1; then
+    pkill -9 -f lxqt-panel 2>/dev/null || true
+    pkill -9 -f pcmanfm-qt 2>/dev/null || true
+    pkill -9 -f openbox 2>/dev/null || true
     pkill -9 -f "Xvfb :1" 2>/dev/null || true
-    pkill -9 -f "openbox.*:1" 2>/dev/null || true
-    rm -f /tmp/.X1-lock /tmp/.X11-unix/X1 /var/run/vnc_display.txt 2>/dev/null || true
+    rm -rf /tmp/.X11-unix/X1 /tmp/.X1-lock "$TMPDIR/.X11-unix/X1" "$TMPDIR/.X1-lock" 2>/dev/null || true
 fi
 
-echo "SUCCESS: x11vnc stopped"
+rm -f /var/run/x11vnc.pid /var/run/vnc_display.txt /tmp/vnc_start.req /tmp/vnc.status 2>/dev/null || true
+
+echo "✅ VNC Server stopped successfully."
 exit 0

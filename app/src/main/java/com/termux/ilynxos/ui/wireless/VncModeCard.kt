@@ -171,7 +171,14 @@ fun VncModeCard(
                 }
                 Switch(
                     checked = isNewSession,
-                    onCheckedChange = onToggleNewSession,
+                    onCheckedChange = { newMode ->
+                        if (portText == "5900" && newMode) {
+                            portText = "5901"
+                        } else if (portText == "5901" && !newMode) {
+                            portText = "5900"
+                        }
+                        onToggleNewSession(newMode)
+                    },
                     enabled = !isRunning,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
@@ -266,7 +273,7 @@ fun VncModeCard(
                                 letterSpacing = 1.sp
                             )
                             Text(
-                                text = "Display :0",
+                                text = if (isNewSession) "Display :1 (PC View)" else "Display :0 (Mirror)",
                                 fontSize = 10.sp,
                                 fontFamily = FontFamily.Monospace,
                                 color = TextDarkSecondary
