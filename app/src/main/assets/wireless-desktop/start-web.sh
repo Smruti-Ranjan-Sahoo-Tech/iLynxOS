@@ -8,13 +8,13 @@ set -e
 command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock 2>/dev/null || true
 
 PORT="${1:-14500}"
-PASSWORD="${2:-raja1234}"
+PASSWORD="${2:-ilinux1719}"
 USE_TLS="${3:-0}"
 DISPLAY_NUM="${4:-1}"
 RESOLUTION="${5:-1280x720}"
 
-if [ -z "$PASSWORD" ] || [[ "$PASSWORD" == ilynx* ]]; then
-    PASSWORD="raja1234"
+if [ -z "$PASSWORD" ] || [[ "$PASSWORD" == ilynx* ]] || [ "$PASSWORD" = "raja1234" ]; then
+    PASSWORD="ilinux1719"
 fi
 
 if [ "$DISPLAY_NUM" = "0" ]; then

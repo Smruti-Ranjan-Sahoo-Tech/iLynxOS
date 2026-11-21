@@ -42,10 +42,10 @@ pkill -9 -f "x11vnc.*:$DISPLAY_NUM" 2>/dev/null || true
 pkill -9 -f "x11vnc.*-rfbport $PORT" 2>/dev/null || true
 sleep 0.2
 
-# 4. Ensure password is set (default: raja1234)
-PASS="${PASSWORD:-raja1234}"
-if [ -z "$PASS" ] || [[ "$PASS" == ilynx* ]]; then
-    PASS="raja1234"
+# 4. Ensure password is set (default: ilinux1719)
+PASS="${PASSWORD:-ilinux1719}"
+if [ -z "$PASS" ] || [[ "$PASS" == ilynx* ]] || [ "$PASS" = "raja1234" ]; then
+    PASS="ilinux1719"
 fi
 
 if [ -n "$PASS" ]; then

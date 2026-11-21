@@ -320,6 +320,8 @@ class LinuxEnvironmentManager(private val context: Context) {
                 # Modern Solid & Touch-Optimized
 
                 export DISPLAY=${'$'}{DISPLAY:-:0}
+                export HOME=/root
+                export USER=root
                 export TMPDIR=/tmp
                 export PULSE_SERVER=127.0.0.1
                 export XDG_CURRENT_DESKTOP=LXQt
@@ -335,6 +337,9 @@ class LinuxEnvironmentManager(private val context: Context) {
                 export GDK_BACKEND=x11
                 export GIO_USE_VFS=local
                 export GVFS_DISABLE_FUSE=1
+                export XDG_DATA_DIRS=/usr/local/share:/usr/share:/var/lib/snapd/desktop
+                export XDG_CONFIG_DIRS=/etc/xdg
+                export XDG_DESKTOP_DIR="/root/Desktop"
                 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${'$'}PATH
 
                 # 1. Clean up stale locks and kill picom to prevent black/blank compositing lockup
@@ -359,8 +364,53 @@ class LinuxEnvironmentManager(private val context: Context) {
                     sleep 0.1
                 done
 
-                # 4. Set background immediately so display is visible instantly (no black screen)
+                # 4. Set background and pre-configure PCManFM-Qt wallpaper configs
                 WALLPAPER="/usr/share/backgrounds/windows-11-bloom-dark.jpg"
+                if [ ! -f "${'$'}WALLPAPER" ]; then
+                    [ -f "/usr/share/backgrounds/ilynx-wallpaper.png" ] && WALLPAPER="/usr/share/backgrounds/ilynx-wallpaper.png"
+                    if [ ! -f "${'$'}WALLPAPER" ]; then
+                        FOUND_WALLPAPER=${'$'}(find /usr/share/backgrounds /usr/share/wallpapers -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null | head -n 1)
+                        [ -n "${'$'}FOUND_WALLPAPER" ] && WALLPAPER="${'$'}FOUND_WALLPAPER"
+                    fi
+                fi
+
+                # Ensure desktop directory exists and shortcuts are executable
+                mkdir -p /root/Desktop /root/.config 2>/dev/null || true
+                chmod +x /root/Desktop/*.desktop 2>/dev/null || true
+
+                # Generate desktop-items config for all RandR monitor outputs (0, 1, screen, default, Screen0, etc.)
+                for dir in /root/.config/pcmanfm-qt/lxqt /root/.config/pcmanfm-qt/default /etc/xdg/pcmanfm-qt/default /etc/xdg/pcmanfm-qt/lxqt; do
+                    mkdir -p "${'$'}dir" 2>/dev/null || true
+                    for conf in desktop-items-0.conf desktop-items-1.conf desktop-items-default.conf desktop-items-screen.conf desktop-items-screen0.conf desktop-items-Screen0.conf desktop-items-SCREEN.conf desktop-items-None.conf desktop-items-VIRTUAL1.conf; do
+                        cat << WPEOF > "${'$'}dir/${'$'}conf"
+[General]
+wallpaper=${'$'}WALLPAPER
+wallpaper_mode=crop
+show_wm_menu=false
+sort_type=0
+sort_by=0
+shadow_hidden=false
+show_hidden=false
+
+[Folder]
+home=true
+trash=true
+computer=true
+network=false
+WPEOF
+                    done
+                done
+
+                # Ensure settings.conf enables wallpaper and SingleClick
+                for dir in /root/.config/pcmanfm-qt/lxqt /root/.config/pcmanfm-qt/default; do
+                    if [ -f "${'$'}dir/settings.conf" ]; then
+                        sed -i "s|Wallpaper=.*|Wallpaper=${'$'}WALLPAPER|g" "${'$'}dir/settings.conf" 2>/dev/null || true
+                        sed -i "s|WallpaperMode=.*|WallpaperMode=crop|g" "${'$'}dir/settings.conf" 2>/dev/null || true
+                        sed -i "s|BgColor=.*|BgColor=#1e1e2e|g" "${'$'}dir/settings.conf" 2>/dev/null || true
+                        sed -i "s|SingleClick=false|SingleClick=true|g" "${'$'}dir/settings.conf" 2>/dev/null || true
+                    fi
+                done
+
                 if command -v feh >/dev/null 2>&1 && [ -f "${'$'}WALLPAPER" ]; then
                     feh --bg-fill "${'$'}WALLPAPER" 2>/dev/null || true
                 elif command -v xsetroot >/dev/null 2>&1; then
@@ -380,6 +430,13 @@ class LinuxEnvironmentManager(private val context: Context) {
                 # 6. Launch Desktop Manager (wallpaper and desktop icons)
                 if command -v pcmanfm-qt >/dev/null 2>&1; then
                     pcmanfm-qt --desktop --profile=lxqt &
+                    # Actively force wallpaper paint via IPC
+                    (
+                        sleep 1
+                        pcmanfm-qt --set-wallpaper="${'$'}WALLPAPER" --wallpaper-mode=crop --profile=lxqt >/dev/null 2>&1 || true
+                        sleep 2
+                        pcmanfm-qt --set-wallpaper="${'$'}WALLPAPER" --wallpaper-mode=crop --profile=lxqt >/dev/null 2>&1 || true
+                    ) &
                 fi
 
                 # 7. Launch Notification Daemon & PolicyKit if available
@@ -420,7 +477,7 @@ class LinuxEnvironmentManager(private val context: Context) {
                     while true; do
                         if [ -f "/tmp/vnc_start.req" ]; then
                             VNC_PORT=${'$'}(head -n 1 /tmp/vnc_start.req 2>/dev/null || echo "5901")
-                            VNC_PASS=${'$'}(sed -n '2p' /tmp/vnc_start.req 2>/dev/null || echo "raja1234")
+                            VNC_PASS=${'$'}(sed -n '2p' /tmp/vnc_start.req 2>/dev/null || echo "ilinux1719")
                             VNC_DISP=${'$'}(sed -n '3p' /tmp/vnc_start.req 2>/dev/null || echo "1")
                             rm -f /tmp/vnc_start.req
                             if [ -x "/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh" ]; then
@@ -458,7 +515,7 @@ class LinuxEnvironmentManager(private val context: Context) {
 
                         if [ -f "/tmp/web_start.req" ]; then
                             WEB_PORT=${'$'}(head -n 1 /tmp/web_start.req 2>/dev/null || echo "14500")
-                            WEB_PASS=${'$'}(sed -n '2p' /tmp/web_start.req 2>/dev/null || echo "raja1234")
+                            WEB_PASS=${'$'}(sed -n '2p' /tmp/web_start.req 2>/dev/null || echo "ilinux1719")
                             USE_TLS=${'$'}(sed -n '3p' /tmp/web_start.req 2>/dev/null || echo "0")
                             WEB_DISP=${'$'}(sed -n '4p' /tmp/web_start.req 2>/dev/null || echo "1")
                             rm -f /tmp/web_start.req

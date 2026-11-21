@@ -43,8 +43,8 @@ class VncServerManager(private val context: Context) {
 
     init {
         val pass = prefs.getString(KEY_PASSWORD, "") ?: ""
-        if (pass.isEmpty() || pass.startsWith("ilynx")) {
-            setPassword("raja1234")
+        if (pass.isEmpty() || pass.startsWith("ilynx") || pass == "raja1234") {
+            setPassword("ilinux1719")
         }
     }
 
@@ -57,9 +57,9 @@ class VncServerManager(private val context: Context) {
 
     fun getPassword(): String {
         val pass = prefs.getString(KEY_PASSWORD, "") ?: ""
-        if (pass.isEmpty() || pass.startsWith("ilynx")) {
-            setPassword("raja1234")
-            return "raja1234"
+        if (pass.isEmpty() || pass.startsWith("ilynx") || pass == "raja1234") {
+            setPassword("ilinux1719")
+            return "ilinux1719"
         }
         return pass
     }
@@ -105,7 +105,7 @@ class VncServerManager(private val context: Context) {
             return@withContext false
         }
 
-        val safePass = if (password.isEmpty() || password.startsWith("ilynx")) "raja1234" else password
+        val safePass = if (password.isEmpty() || password.startsWith("ilynx") || password == "raja1234") "ilinux1719" else password
         val effectivePort = if (newSession && port == 5900) 5901 else if (!newSession && port == 5901) 5900 else port
         setPort(effectivePort)
         setPassword(safePass)
@@ -142,15 +142,17 @@ class VncServerManager(private val context: Context) {
 
         // 3. Trigger startup cleanly via CLI execution (script uses file-lock to prevent race)
         try {
-            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh $effectivePort '$safePass' $dispNum 1280x720 &") {}
+            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh $effectivePort '$safePass' $dispNum 1280x720 &") { line ->
+                Log.d(TAG, "[VNC Output] $line")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed executing start-vnc.sh: ${e.message}")
         }
 
         // 4. Poll for socket availability
         var socketOpen = false
-        for (i in 1..25) {
-            kotlinx.coroutines.delay(150)
+        for (i in 1..40) {
+            kotlinx.coroutines.delay(200)
             if (checkSocketListening(effectivePort)) {
                 Log.i(TAG, "VNC server detected listening on port $effectivePort (attempt $i)")
                 socketOpen = true
@@ -179,7 +181,9 @@ class VncServerManager(private val context: Context) {
         } catch (_: Exception) {}
 
         try {
-            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh &") {}
+            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh &") { line ->
+                Log.d(TAG, "[VNC Stop] $line")
+            }
         } catch (_: Exception) {}
 
         for (i in 1..10) {

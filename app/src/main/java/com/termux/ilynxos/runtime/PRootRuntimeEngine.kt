@@ -101,7 +101,7 @@ class PRootRuntimeEngine(private val context: Context) {
             // Direct LXQt boot via PRoot
             _sessionState.value = SessionState.Starting("Launching LXQt modern desktop...")
             val qemuBin = File(nativeLibDir, "libqemu-aarch64.so").takeIf { it.exists() }
-            val prootArgs = mutableListOf(prootBin.absolutePath)
+            val prootArgs = mutableListOf<String>()
             if (qemuBin != null) {
                 prootArgs.add("-q")
                 prootArgs.add(qemuBin.absolutePath)
@@ -147,7 +147,17 @@ class PRootRuntimeEngine(private val context: Context) {
                     fi
                 """.trimIndent()
             ))
-            ProcessBuilder(prootArgs).directory(envManager.filesDir)
+
+            val shScript = buildString {
+                append("export LD_LIBRARY_PATH=\"$nativeLibDir\"\n")
+                append("export PROOT_LOADER=\"${loaderBin.absolutePath}\"\n")
+                append("export PROOT_TMP_DIR=\"$tmpPath\"\n")
+                append("exec \"${prootBin.absolutePath}\"")
+                for (arg in prootArgs) {
+                    append(" '").append(arg.replace("'", "'\\''")).append("'")
+                }
+            }
+            ProcessBuilder("/system/bin/sh", "-c", shScript).directory(envManager.filesDir)
         }
 
         val env = pb.environment()
@@ -257,7 +267,7 @@ class PRootRuntimeEngine(private val context: Context) {
         val tmpPath = envManager.tmpDir.absolutePath
 
         val qemuBin = File(nativeLibDir, "libqemu-aarch64.so").takeIf { it.exists() }
-        val prootArgs = mutableListOf(prootBin.absolutePath)
+        val prootArgs = mutableListOf<String>()
         if (qemuBin != null) {
             prootArgs.add("-q")
             prootArgs.add(qemuBin.absolutePath)
@@ -270,19 +280,30 @@ class PRootRuntimeEngine(private val context: Context) {
             "--bind=/sys",
             "--bind=/dev/urandom:/dev/random",
             "--bind=$tmpPath:/tmp",
+            "--bind=$tmpPath/.X11-unix:/tmp/.X11-unix",
+            "--bind=$tmpPath/shm:/dev/shm",
             "--sysvipc",
             "--link2symlink",
-            "--kill-on-exit",
             "--kernel-release=6.1.0",
             "--change-id=0:0",
             "/bin/bash",
             "-c",
-            "unset LD_LIBRARY_PATH; unset LD_PRELOAD; export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; $command"
+            "unset LD_LIBRARY_PATH; unset LD_PRELOAD; export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:\$PATH; $command"
         ))
 
-        val pb = ProcessBuilder(prootArgs)
+        val shScript = buildString {
+            append("export LD_LIBRARY_PATH=\"$nativeLibDir\"\n")
+            append("export PROOT_LOADER=\"${loaderBin.absolutePath}\"\n")
+            append("export PROOT_TMP_DIR=\"$tmpPath\"\n")
+            append("exec \"${prootBin.absolutePath}\"")
+            for (arg in prootArgs) {
+                append(" '").append(arg.replace("'", "'\\''")).append("'")
+            }
+        }
+
+        val pb = ProcessBuilder("/system/bin/sh", "-c", shScript).directory(envManager.filesDir)
         val env = pb.environment()
-        env["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        env["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/system/bin:/system/xbin"
         env["LD_LIBRARY_PATH"] = nativeLibDir
         env["PROOT_LOADER"] = loaderBin.absolutePath
         env["PROOT_TMP_DIR"] = tmpPath

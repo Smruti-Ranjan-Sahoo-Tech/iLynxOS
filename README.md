@@ -26,7 +26,7 @@
 
 | Package | Version | Architecture | SHA-256 Checksum | Size |
 | :--- | :--- | :--- | :--- | :--- |
-| **[iLynxOS-v1.03-NobleModern.apk](https://github.com/Smruti-Ranjan-Sahoo-Tech/iLynxOS/raw/main/iLynxOS-v1.03-NobleModern.apk)** | `v1.03` | Android ARM64 / universal | `929fa251fe8e0d737d5186ddde43ad81465343c1d01e2a5a324b26607ee46afd` | ~28 MB |
+| **[iLynxOS-v1.03-NobleModern.apk](https://github.com/Smruti-Ranjan-Sahoo-Tech/iLynxOS/raw/main/iLynxOS-v1.03-NobleModern.apk)** | `v1.03` | Android ARM64 / universal | `0eba50ff362014b051c0b7716b0659ec00c19c534426f580e449accd8b8e7cd3` | ~28 MB |
 | **[iLynx.tar.gz (Ubuntu 24.04 LTS)](https://drive.google.com/drive/folders/1NccoZ5Rzscwexz7wHoOnbkjgeeWpkwaf)** | `v1.02` | `aarch64` | `64d33ccc6bc65e08f03e24e22744b92803d5bc948e4d37bba3d84f54bb27e968` | ~1.4 GB |
 
 > [!NOTE]
@@ -280,7 +280,7 @@ Download `iLynx.tar.gz` (~1.4 GB) from the [Official Google Drive Repository](ht
 On Linux/macOS or via Termux on Android, verify integrity before extraction:
 ```bash
 sha256sum iLynxOS-v1.03-NobleModern.apk
-# Expected: 929fa251fe8e0d737d5186ddde43ad81465343c1d01e2a5a324b26607ee46afd
+# Expected: 5fefaee6097ee08fde7e2326d66c1225c6edc7a530bc3101e8e6d3f04064104f
 
 sha256sum iLynx.tar.gz
 # Expected: 64d33ccc6bc65e08f03e24e22744b92803d5bc948e4d37bba3d84f54bb27e968
@@ -305,7 +305,7 @@ No software installation required on the client device.
 3. Toggle **Dedicated Virtual Desktop (:1)** and tap **Start Web**.
 4. On your PC, laptop, or tablet browser, open:
    ```text
-   http://<PHONE_IP>:14500/vnc.html?autoconnect=true&resize=scale&password=raja1234
+   http://<PHONE_IP>:14500/vnc.html?autoconnect=true&resize=scale&password=ilinux1719
    ```
 5. A full desktop session appears in your browser tab with full keyboard, mouse, and clipboard support.
 
@@ -317,7 +317,7 @@ Recommended for latency-critical tasks and daily PC workstation use.
    - **TigerVNC:** `vncviewer <PHONE_IP>:5901`
    - **RealVNC Viewer:** Connect to `<PHONE_IP>:5901`
    - **Remmina (Linux):** Connect via VNC to `<PHONE_IP>:5901`
-3. Enter password: `raja1234` (or your configured custom password).
+3. Enter password: `ilinux1719` (or your configured custom password).
 4. **Features in VNC Mode:**
    - Dedicated 24-bit virtual canvas.
    - PC mouse cursor rendered smoothly via hardware tracking (`-cursor arrow`).
