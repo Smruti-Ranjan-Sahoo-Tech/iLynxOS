@@ -350,10 +350,10 @@ class LinuxEnvironmentManager(private val context: Context) {
                 dbus-uuidgen --ensure 2>/dev/null || true
                 eval ${'$'}(dbus-launch --sh-syntax --exit-with-session) 2>/dev/null || true
 
-                # 3b. Actively wait for X11 display server :0 to become ready before launching apps
-                echo "[iLynxOS] Waiting for X11 display :0 to become ready..."
+                # 3b. Actively wait for X11 display server to become ready before launching apps
+                echo "[iLynxOS] Waiting for X11 display ${'$'}DISPLAY to become ready..."
                 for i in $(seq 1 60); do
-                    if xsetroot -display :0 -solid "#1e1e2e" 2>/dev/null; then
+                    if xsetroot -display "${'$'}DISPLAY" -solid "#1e1e2e" 2>/dev/null; then
                         break
                     fi
                     sleep 0.1
@@ -418,9 +418,10 @@ class LinuxEnvironmentManager(private val context: Context) {
                         if [ -f "/tmp/vnc_start.req" ]; then
                             VNC_PORT=${'$'}(head -n 1 /tmp/vnc_start.req 2>/dev/null || echo "5900")
                             VNC_PASS=${'$'}(sed -n '2p' /tmp/vnc_start.req 2>/dev/null || echo "")
+                            VNC_DISP=${'$'}(sed -n '3p' /tmp/vnc_start.req 2>/dev/null || echo "1")
                             rm -f /tmp/vnc_start.req
                             if [ -x "/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh" ]; then
-                                /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}VNC_PORT" "${'$'}VNC_PASS" &
+                                /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}VNC_PORT" "${'$'}VNC_PASS" "${'$'}VNC_DISP" &
                             else
                                 pkill -9 -f x11vnc 2>/dev/null || true
                                 sleep 0.2
@@ -432,7 +433,7 @@ class LinuxEnvironmentManager(private val context: Context) {
                                 else
                                     AUTH_ARG="-nopw"
                                 fi
-                                x11vnc -display :0 -rfbport "${'$'}VNC_PORT" -listen 0.0.0.0 ${'$'}AUTH_ARG -forever -shared -repeat -noshm -bg -o /var/log/x11vnc.log 2>&1
+                                x11vnc -display ":${'$'}VNC_DISP" -rfbport "${'$'}VNC_PORT" -listen 0.0.0.0 ${'$'}AUTH_ARG -forever -shared -repeat -noshm -bg -o /var/log/x11vnc.log 2>&1
                             fi
                             echo "1" > /tmp/vnc.status
                         fi
@@ -452,11 +453,12 @@ class LinuxEnvironmentManager(private val context: Context) {
                             WEB_PORT=${'$'}(head -n 1 /tmp/web_start.req 2>/dev/null || echo "14500")
                             WEB_PASS=${'$'}(sed -n '2p' /tmp/web_start.req 2>/dev/null || echo "")
                             USE_TLS=${'$'}(sed -n '3p' /tmp/web_start.req 2>/dev/null || echo "0")
+                            WEB_DISP=${'$'}(sed -n '4p' /tmp/web_start.req 2>/dev/null || echo "1")
                             rm -f /tmp/web_start.req
                             if [ -x "/usr/local/share/ilynxos/wireless-desktop/start-web.sh" ]; then
-                                /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}WEB_PORT" "${'$'}WEB_PASS" "${'$'}USE_TLS" &
+                                /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}WEB_PORT" "${'$'}WEB_PASS" "${'$'}USE_TLS" "${'$'}WEB_DISP" &
                             fi
-                            sleep 1.0
+                            sleep 0.8
                             if pgrep -f websockify >/dev/null 2>&1; then
                                 echo "1" > /tmp/web.status
                             else

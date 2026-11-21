@@ -70,11 +70,13 @@ fun VncModeCard(
     state: ServiceState,
     networkIp: String? = null,
     isEnabled: Boolean,
+    isNewSession: Boolean = true,
     initialPassword: String,
     onToggleEnabled: (Boolean) -> Unit,
-    onStart: (port: Int, pass: String) -> Unit,
+    onToggleNewSession: (Boolean) -> Unit = {},
+    onStart: (port: Int, pass: String, newSession: Boolean) -> Unit,
     onStop: () -> Unit,
-    onRestart: (port: Int, pass: String) -> Unit
+    onRestart: (port: Int, pass: String, newSession: Boolean) -> Unit
 ) {
     val clipboardManager = LocalClipboardManager.current
     var portText by remember(state.port) { mutableStateOf(state.port.toString()) }
@@ -123,7 +125,7 @@ fun VncModeCard(
                             fontSize = 16.sp
                         )
                         Text(
-                            text = "Direct RFB remote screen sharing (:0)",
+                            text = if (isNewSession) "Dedicated Virtual Session (:1)" else "Mirror Phone Desktop (:0)",
                             color = TextDarkSecondary,
                             fontSize = 12.sp
                         )
@@ -135,6 +137,42 @@ fun VncModeCard(
                 Switch(
                     checked = isEnabled,
                     onCheckedChange = onToggleEnabled,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = OrangePrimary
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Session Mode Selector: New Dedicated Session (:1) vs Mirror Current Screen (:0)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(WarmBackground, RoundedCornerShape(12.dp))
+                    .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isNewSession) "Dedicated Virtual Desktop (:1)" else "Mirror Phone Desktop (:0)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = TextDarkPrimary
+                    )
+                    Text(
+                        text = if (isNewSession) "New 1080p desktop with low latency & full input" else "Shares the phone screen directly",
+                        fontSize = 11.sp,
+                        color = TextDarkSecondary
+                    )
+                }
+                Switch(
+                    checked = isNewSession,
+                    onCheckedChange = onToggleNewSession,
+                    enabled = !isRunning,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
                         checkedTrackColor = OrangePrimary
@@ -347,7 +385,7 @@ fun VncModeCard(
                         onClick = {
                             val port = portText.toIntOrNull() ?: 5900
                             if (!isEnabled) onToggleEnabled(true)
-                            onStart(port, passwordText)
+                            onStart(port, passwordText, isNewSession)
                         },
                         enabled = !isStarting,
                         shape = RoundedCornerShape(12.dp),
@@ -375,7 +413,7 @@ fun VncModeCard(
                     OutlinedButton(
                         onClick = {
                             val port = portText.toIntOrNull() ?: 5900
-                            onRestart(port, passwordText)
+                            onRestart(port, passwordText, isNewSession)
                         },
                         shape = RoundedCornerShape(12.dp),
                         border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),

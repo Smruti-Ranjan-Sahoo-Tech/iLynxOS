@@ -251,7 +251,56 @@ fun DesktopScreen(
                     var isTwoFingerTap = false
                     var twoFingerDownTime = 0L
 
+                    // External Hardware Mouse tracking
+                    var savedMouseButtonMask = 0
+                    val mouseButtonMap = arrayOf(
+                        MotionEvent.BUTTON_PRIMARY to InputStub.BUTTON_LEFT,
+                        MotionEvent.BUTTON_SECONDARY to InputStub.BUTTON_RIGHT,
+                        MotionEvent.BUTTON_TERTIARY to InputStub.BUTTON_MIDDLE
+                    )
+
+                    fun syncMouseButtons(newMask: Int) {
+                        for ((mask, x11Btn) in mouseButtonMap) {
+                            val wasDown = (savedMouseButtonMask and mask) != 0
+                            val isNowDown = (newMask and mask) != 0
+                            if (wasDown != isNowDown) {
+                                sendMouseEvent(0f, 0f, x11Btn, isNowDown, true)
+                            }
+                        }
+                        savedMouseButtonMask = newMask
+                    }
+
+                    fun isHardwareMouseEvent(event: MotionEvent): Boolean {
+                        return event.isFromSource(InputDevice.SOURCE_MOUSE) ||
+                               event.isFromSource(InputDevice.SOURCE_MOUSE_RELATIVE) ||
+                               (event.pointerCount > 0 && event.getToolType(0) == MotionEvent.TOOL_TYPE_MOUSE) ||
+                               event.buttonState != 0 ||
+                               savedMouseButtonMask != 0
+                    }
+
                     setOnTouchListener { _, event ->
+                        // 1. Process Hardware External Mouse events (Left, Right, Middle drag & drop)
+                        if (isHardwareMouseEvent(event)) {
+                            syncMouseButtons(event.buttonState)
+
+                            val pts = floatArrayOf(event.x, event.y)
+                            inputMatrix.mapPoints(pts)
+
+                            when (event.actionMasked) {
+                                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                                    sendMouseEvent(pts[0], pts[1], InputStub.BUTTON_UNDEFINED, false, false)
+                                }
+                                MotionEvent.ACTION_BUTTON_PRESS, MotionEvent.ACTION_BUTTON_RELEASE -> {
+                                    syncMouseButtons(event.buttonState)
+                                }
+                                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                                    syncMouseButtons(event.buttonState)
+                                }
+                            }
+                            return@setOnTouchListener true
+                        }
+
+                        // 2. Process Touchscreen / Stylus gesture events
                         when (mouseMode) {
                             MouseMode.TRACKPAD -> {
                                 when (event.actionMasked) {
@@ -266,7 +315,7 @@ fun DesktopScreen(
                                         // Double-tap and hold to drag
                                         val timeSinceLast = downTime - lastTapTime
                                         val tapDist = Math.hypot((event.x - lastTapX).toDouble(), (event.y - lastTapY).toDouble())
-                                        if (timeSinceLast < 280 && tapDist < 40) {
+                                        if (timeSinceLast < 300 && tapDist < 50) {
                                             isDoubleTapDragging = true
                                             sendMouseEvent(0f, 0f, InputStub.BUTTON_LEFT, true, true)
                                         }
@@ -286,8 +335,7 @@ fun DesktopScreen(
                                         if (event.pointerCount == 1) {
                                             val dx = (event.x - lastTouchX) * pointerSensitivity
                                             val dy = (event.y - lastTouchY) * pointerSensitivity
-                                            val isHolding = isDragLocked || isDoubleTapDragging
-                                            sendMouseEvent(dx, dy, if (isHolding) InputStub.BUTTON_LEFT else InputStub.BUTTON_UNDEFINED, isHolding, true)
+                                            sendMouseEvent(dx, dy, InputStub.BUTTON_UNDEFINED, false, true)
                                             lastTouchX = event.x
                                             lastTouchY = event.y
                                         } else if (event.pointerCount >= 2) {
@@ -412,16 +460,24 @@ fun DesktopScreen(
                     }
 
                     setOnGenericMotionListener { _, event ->
-                        if (event.isFromSource(InputDevice.SOURCE_CLASS_POINTER)) {
+                        if (isHardwareMouseEvent(event) || event.isFromSource(InputDevice.SOURCE_CLASS_POINTER)) {
+                            syncMouseButtons(event.buttonState)
                             when (event.actionMasked) {
                                 MotionEvent.ACTION_HOVER_MOVE -> {
-                                    sendMouseEvent(event.x, event.y, 0, false, false)
+                                    val pts = floatArrayOf(event.x, event.y)
+                                    inputMatrix.mapPoints(pts)
+                                    sendMouseEvent(pts[0], pts[1], InputStub.BUTTON_UNDEFINED, false, false)
                                     true
                                 }
                                 MotionEvent.ACTION_SCROLL -> {
                                     val vScroll = event.getAxisValue(MotionEvent.AXIS_VSCROLL)
                                     val hScroll = event.getAxisValue(MotionEvent.AXIS_HSCROLL)
-                                    sendMouseWheelEvent(hScroll * 100f, -vScroll * 100f)
+                                    val factor = if (invertScroll) -100f else 100f
+                                    sendMouseWheelEvent(hScroll * 100f, -vScroll * factor)
+                                    true
+                                }
+                                MotionEvent.ACTION_BUTTON_PRESS, MotionEvent.ACTION_BUTTON_RELEASE -> {
+                                    syncMouseButtons(event.buttonState)
                                     true
                                 }
                                 else -> false
@@ -835,11 +891,10 @@ fun DesktopScreen(
                                                 change.consume()
                                                 val dx = dragAmount.x * pointerSensitivity
                                                 val dy = dragAmount.y * pointerSensitivity
-                                                val isHolding = isDragLocked
                                                 currentLorieView?.sendMouseEvent(
                                                     dx, dy,
-                                                    if (isHolding) InputStub.BUTTON_LEFT else InputStub.BUTTON_UNDEFINED,
-                                                    isHolding, true
+                                                    InputStub.BUTTON_UNDEFINED,
+                                                    false, true
                                                 )
                                                 lastX += dragAmount.x
                                                 lastY += dragAmount.y

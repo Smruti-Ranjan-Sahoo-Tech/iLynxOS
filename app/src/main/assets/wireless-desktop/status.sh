@@ -16,8 +16,13 @@ if pgrep -f "websockify" >/dev/null 2>&1; then
     WEB_PID=$(pgrep -f "websockify" | head -n 1)
 fi
 
+XVFB_RUNNING=0
+if pgrep -f "Xvfb :1" >/dev/null 2>&1; then
+    XVFB_RUNNING=1
+fi
+
 X11_RUNNING=0
-if [ -S "/tmp/.X11-unix/X0" ]; then
+if [ -S "/tmp/.X11-unix/X0" ] || [ "$XVFB_RUNNING" = "1" ]; then
     X11_RUNNING=1
 fi
 
@@ -32,10 +37,10 @@ if [ -d "/usr/local/share/ilynxos/wireless-desktop/novnc" ] && [ -d "/usr/local/
 fi
 
 echo "X11_RUNNING=$X11_RUNNING"
+echo "XVFB_RUNNING=$XVFB_RUNNING"
 echo "X11VNC_INSTALLED=$X11VNC_INSTALLED"
 echo "VNC_RUNNING=$VNC_RUNNING"
 echo "VNC_PID=$VNC_PID"
-echo "XPRA_INSTALLED=$WEB_INSTALLED"
 echo "WEB_INSTALLED=$WEB_INSTALLED"
 echo "WEB_RUNNING=$WEB_RUNNING"
 echo "WEB_PID=$WEB_PID"

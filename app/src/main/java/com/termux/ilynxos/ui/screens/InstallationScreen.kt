@@ -1,5 +1,6 @@
 package com.termux.ilynxos.ui.screens
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -325,6 +326,25 @@ fun InstallationScreen(
                         Icon(Icons.Default.FolderOpen, contentDescription = null, tint = OrangePrimary)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Browse Archive (SAF Picker)", color = OrangePrimary, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://drive.google.com/drive/folders/1NccoZ5Rzscwexz7wHoOnbkjgeeWpkwaf")
+                            ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, CardBorder)
+                    ) {
+                        Icon(Icons.Default.CloudDownload, contentDescription = null, tint = EmeraldGreen)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Download iLynx.tar.gz (Google Drive)", color = TextDarkPrimary, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }

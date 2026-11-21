@@ -24,6 +24,7 @@ class WebDesktopManager(private val context: Context) {
         private const val KEY_PASSWORD = "web_password"
         private const val KEY_ENABLED = "web_enabled"
         private const val KEY_USE_TLS = "web_use_tls"
+        private const val KEY_SESSION_MODE = "web_session_mode"
         const val DEFAULT_PORT = 14500
     }
 
@@ -63,6 +64,9 @@ class WebDesktopManager(private val context: Context) {
     fun isTlsEnabled(): Boolean = prefs.getBoolean(KEY_USE_TLS, false)
     fun setTlsEnabled(tls: Boolean) = prefs.edit().putBoolean(KEY_USE_TLS, tls).apply()
 
+    fun isNewSession(): Boolean = prefs.getBoolean(KEY_SESSION_MODE, true)
+    fun setNewSession(newSession: Boolean) = prefs.edit().putBoolean(KEY_SESSION_MODE, newSession).apply()
+
     suspend fun checkXpraInstalled(): Boolean = withContext(Dispatchers.IO) {
         val rootfsDir = envManager.rootfsDir
         val novncHtml = File(rootfsDir, "usr/local/share/ilynxos/wireless-desktop/novnc/vnc.html")
@@ -87,7 +91,8 @@ class WebDesktopManager(private val context: Context) {
     suspend fun start(
         port: Int = getPort(),
         password: String = getPassword(),
-        useTls: Boolean = isTlsEnabled()
+        useTls: Boolean = isTlsEnabled(),
+        newSession: Boolean = isNewSession()
     ): Boolean = withContext(Dispatchers.IO) {
         if (!envManager.isInstalled()) {
             _state.value = _state.value.copy(
@@ -100,25 +105,32 @@ class WebDesktopManager(private val context: Context) {
         setPort(port)
         if (password.isNotEmpty()) setPassword(password)
         setTlsEnabled(useTls)
+        setNewSession(newSession)
 
         _state.value = _state.value.copy(status = ServiceStatus.STARTING, error = null)
 
+        val dispNum = if (newSession) "1" else "0"
+
         // Ensure desktop session and X11 server are active
-        if (!runtimeEngine.isSessionRunning()) {
+        if (dispNum == "0" && !runtimeEngine.isSessionRunning()) {
             Log.i(TAG, "Desktop session not running; starting LinuxSessionService...")
             try {
                 com.termux.ilynxos.runtime.LinuxSessionService.startService(context)
                 val socketFile = File(envManager.tmpDir, ".X11-unix/X0")
-                for (i in 1..40) {
+                for (i in 1..30) {
                     if (socketFile.exists() && runtimeEngine.isSessionRunning()) {
                         Log.i(TAG, "Session and X11 socket verified ready for Web Mode")
                         break
                     }
-                    kotlinx.coroutines.delay(200)
+                    kotlinx.coroutines.delay(100)
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed starting desktop session: ${e.message}")
             }
+        } else if (!runtimeEngine.isSessionRunning()) {
+            try {
+                com.termux.ilynxos.runtime.LinuxSessionService.startService(context)
+            } catch (_: Exception) {}
         }
 
         // Ensure wireless desktop scripts and noVNC/websockify unpacked
@@ -128,25 +140,25 @@ class WebDesktopManager(private val context: Context) {
         val tlsFlag = if (useTls) "1" else "0"
         try {
             val reqFile = File(envManager.tmpDir, "web_start.req")
-            reqFile.writeText("$port\n$password\n$tlsFlag\n")
-            Log.i(TAG, "Written web_start.req (port: $port, tls: $tlsFlag)")
+            reqFile.writeText("$port\n$password\n$tlsFlag\n$dispNum\n")
+            Log.i(TAG, "Written web_start.req (port: $port, tls: $tlsFlag, disp: $dispNum)")
         } catch (e: Exception) {
             Log.e(TAG, "Failed writing web_start.req: ${e.message}")
         }
 
+        // Trigger startup immediately to eliminate delay
+        try {
+            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-web.sh $port '$password' $tlsFlag $dispNum &") {}
+        } catch (_: Exception) {}
+
         // Poll for socket availability
         var socketOpen = false
         for (i in 1..25) {
-            kotlinx.coroutines.delay(400)
+            kotlinx.coroutines.delay(150)
             if (checkSocketListening(port)) {
                 Log.i(TAG, "Web Mode detected listening on port $port (attempt $i)")
                 socketOpen = true
                 break
-            }
-            if (i == 5 && !checkSocketListening(port)) {
-                try {
-                    runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-web.sh $port '$password' $tlsFlag &") {}
-                } catch (_: Exception) {}
             }
         }
 
@@ -194,11 +206,12 @@ class WebDesktopManager(private val context: Context) {
     suspend fun restart(
         port: Int = getPort(),
         password: String = getPassword(),
-        useTls: Boolean = isTlsEnabled()
+        useTls: Boolean = isTlsEnabled(),
+        newSession: Boolean = isNewSession()
     ): Boolean {
         stop()
         kotlinx.coroutines.delay(500)
-        return start(port, password, useTls)
+        return start(port, password, useTls, newSession)
     }
 
     suspend fun checkStatus(): Boolean = withContext(Dispatchers.IO) {

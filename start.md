@@ -1,6 +1,16 @@
 # iLynxOS 1.03 (Noble Modern Edition) - Full Technical & Setup Documentation
 **Standalone Native Android OS Environment with LXQt Modern Desktop**
 
+### 📥 Downloads & Quick Links
+
+| Deliverable / Resource | Download / Access Link | Size & Notes |
+| :--- | :--- | :--- |
+| **📱 iLynxOS Android APK** | [**Download iLynxOS-v1.03-NobleModern.apk**](https://github.com/Smruti-Ranjan-Sahoo-Tech/iLynxOS/raw/main/iLynxOS-v1.03-NobleModern.apk) • [Local File Link](file:///media/smruti/bb847b45-9fb8-4899-b51d-779c6768f27f1/mobile-dev-os/smartphone-movile-os/iLynxOS/iLynxOS-v1.03-NobleModern.apk) | **~28 MB** • Noble Modern Edition standalone APK |
+| **📦 Rootfs Archive (iLynx.tar.gz)** | [**Download iLynx.tar.gz (Google Drive)**](https://drive.google.com/drive/folders/1NccoZ5Rzscwexz7wHoOnbkjgeeWpkwaf) | **~1.4 GB** • Official Ubuntu 24.04 LTS LXQt filesystem |
+| **🏠 GitHub Repository** | [**Smruti-Ranjan-Sahoo-Tech/iLynxOS**](https://github.com/Smruti-Ranjan-Sahoo-Tech/iLynxOS) | Source repository & releases |
+
+---
+
 Developer & Lead Architect: **Smruti Ranjan Sahoo**  
 Email: [s.r.sahoo370@gmail.com](mailto:s.r.sahoo370@gmail.com)  
 GitHub Profile: [https://github.com/Smruti-Ranjan-Sahoo-Tech](https://github.com/Smruti-Ranjan-Sahoo-Tech)  

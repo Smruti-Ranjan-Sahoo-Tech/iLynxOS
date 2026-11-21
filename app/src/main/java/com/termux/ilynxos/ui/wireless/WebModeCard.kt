@@ -67,6 +67,7 @@ import com.termux.ilynxos.ui.theme.OrangeAccentBorder
 import com.termux.ilynxos.ui.theme.OrangePrimary
 import com.termux.ilynxos.ui.theme.TextDarkPrimary
 import com.termux.ilynxos.ui.theme.TextDarkSecondary
+import com.termux.ilynxos.ui.theme.WarmBackground
 import com.termux.ilynxos.wireless.ServiceState
 import com.termux.ilynxos.wireless.ServiceStatus
 
@@ -78,11 +79,13 @@ fun WebModeCard(
     isXpraInstalled: Boolean,
     isInstalling: Boolean,
     initialPassword: String,
+    isNewSession: Boolean = true,
     onToggleEnabled: (Boolean) -> Unit,
     onToggleTls: (Boolean) -> Unit,
-    onStart: (port: Int, pass: String, tls: Boolean) -> Unit,
+    onToggleNewSession: (Boolean) -> Unit = {},
+    onStart: (port: Int, pass: String, tls: Boolean, newSession: Boolean) -> Unit,
     onStop: () -> Unit,
-    onRestart: (port: Int, pass: String, tls: Boolean) -> Unit,
+    onRestart: (port: Int, pass: String, tls: Boolean, newSession: Boolean) -> Unit,
     onInstallDependencies: () -> Unit,
     onShowQr: (url: String) -> Unit
 ) {
@@ -133,7 +136,7 @@ fun WebModeCard(
                             fontSize = 16.sp
                         )
                         Text(
-                            text = "Access via any web browser (:0)",
+                            text = if (isNewSession) "Dedicated Virtual Session (:1)" else "Mirror Phone Desktop (:0)",
                             color = TextDarkSecondary,
                             fontSize = 12.sp
                         )
@@ -145,6 +148,42 @@ fun WebModeCard(
                 Switch(
                     checked = isEnabled,
                     onCheckedChange = onToggleEnabled,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = EmeraldGreen
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Session Mode Selector: New Dedicated Session (:1) vs Mirror Current Screen (:0)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(WarmBackground, RoundedCornerShape(12.dp))
+                    .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isNewSession) "Dedicated Virtual Desktop (:1)" else "Mirror Phone Desktop (:0)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = TextDarkPrimary
+                    )
+                    Text(
+                        text = if (isNewSession) "New 1080p desktop with low latency & full input" else "Shares the phone screen directly",
+                        fontSize = 11.sp,
+                        color = TextDarkSecondary
+                    )
+                }
+                Switch(
+                    checked = isNewSession,
+                    onCheckedChange = onToggleNewSession,
+                    enabled = !isRunning,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
                         checkedTrackColor = EmeraldGreen
@@ -333,7 +372,7 @@ fun WebModeCard(
                         onClick = {
                             val port = portText.toIntOrNull() ?: 14500
                             if (!isEnabled) onToggleEnabled(true)
-                            onStart(port, passwordText, isTlsEnabled)
+                            onStart(port, passwordText, isTlsEnabled, isNewSession)
                         },
                         enabled = !isStarting,
                         shape = RoundedCornerShape(12.dp),
@@ -361,7 +400,7 @@ fun WebModeCard(
                     OutlinedButton(
                         onClick = {
                             val port = portText.toIntOrNull() ?: 14500
-                            onRestart(port, passwordText, isTlsEnabled)
+                            onRestart(port, passwordText, isTlsEnabled, isNewSession)
                         },
                         shape = RoundedCornerShape(12.dp),
                         border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),

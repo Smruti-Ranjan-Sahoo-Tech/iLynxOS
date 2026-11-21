@@ -262,16 +262,18 @@ fun WirelessDesktopScreen(
                 state = vncState,
                 networkIp = networkInfo.ipAddress,
                 isEnabled = manager.vncManager.isEnabled(),
+                isNewSession = manager.vncManager.isNewSession(),
                 initialPassword = manager.vncManager.getPassword(),
                 onToggleEnabled = { manager.vncManager.setEnabled(it) },
-                onStart = { port, pass ->
-                    scope.launch { manager.startVnc(port, pass) }
+                onToggleNewSession = { manager.vncManager.setNewSession(it) },
+                onStart = { port, pass, newSession ->
+                    scope.launch { manager.startVnc(port, pass, newSession) }
                 },
                 onStop = {
                     scope.launch { manager.stopVnc() }
                 },
-                onRestart = { port, pass ->
-                    scope.launch { manager.restartVnc(port, pass) }
+                onRestart = { port, pass, newSession ->
+                    scope.launch { manager.restartVnc(port, pass, newSession) }
                 }
             )
 
@@ -284,17 +286,19 @@ fun WirelessDesktopScreen(
                 isTlsEnabled = manager.webManager.isTlsEnabled(),
                 isXpraInstalled = isXpraInstalled,
                 isInstalling = isInstalling,
+                isNewSession = manager.webManager.isNewSession(),
                 initialPassword = manager.webManager.getPassword(),
                 onToggleEnabled = { manager.webManager.setEnabled(it) },
                 onToggleTls = { manager.webManager.setTlsEnabled(it) },
-                onStart = { port, pass, tls ->
-                    scope.launch { manager.startWeb(port, pass, tls) }
+                onToggleNewSession = { manager.webManager.setNewSession(it) },
+                onStart = { port, pass, tls, newSession ->
+                    scope.launch { manager.startWeb(port, pass, tls, newSession) }
                 },
                 onStop = {
                     scope.launch { manager.stopWeb() }
                 },
-                onRestart = { port, pass, tls ->
-                    scope.launch { manager.restartWeb(port, pass, tls) }
+                onRestart = { port, pass, tls, newSession ->
+                    scope.launch { manager.restartWeb(port, pass, tls, newSession) }
                 },
                 onInstallDependencies = {
                     scope.launch { manager.installDependencies {} }

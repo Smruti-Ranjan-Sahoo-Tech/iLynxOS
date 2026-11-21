@@ -1,30 +1,32 @@
 #!/bin/bash
 # iLynxOS Wireless Desktop - Start Web Mode (noVNC + WebSockify)
-# Streams existing X11 display :0 via WebSockets & HTML5 client
+# Streams dedicated virtual X11 session (:1) or screen (:0) via HTML5 client
 set -e
 
 PORT="${1:-14500}"
 PASSWORD="$2"
 USE_TLS="${3:-0}"
+DISPLAY_NUM="${4:-1}"
+VNC_PORT="5900"
 
 SCRIPT_DIR="/usr/local/share/ilynxos/wireless-desktop"
 NOVNC_DIR="$SCRIPT_DIR/novnc"
 
 mkdir -p /var/log /var/run /root/.ilynxos/ssl 2>/dev/null || true
 
-# 1. Ensure VNC server is running on display :0 (port 5900)
+# 1. Ensure VNC server backend is running on DISPLAY_NUM
 if ! pgrep -f "x11vnc" >/dev/null 2>&1; then
-    echo "[Web Mode] VNC backend not running. Starting x11vnc on 5900..."
+    echo "[Web Mode] VNC backend not running. Starting VNC on display :$DISPLAY_NUM..."
     if [ -x "$SCRIPT_DIR/start-vnc.sh" ]; then
-        "$SCRIPT_DIR/start-vnc.sh" 5900 "$PASSWORD"
-    else
-        x11vnc -display :0 -rfbport 5900 -listen 0.0.0.0 -nopw -forever -shared -repeat -noshm -bg -o /var/log/x11vnc.log 2>&1
+        "$SCRIPT_DIR/start-vnc.sh" "$VNC_PORT" "$PASSWORD" "$DISPLAY_NUM"
+    elif [ -x "/usr/local/bin/start-vnc" ]; then
+        /usr/local/bin/start-vnc "$VNC_PORT" "$PASSWORD" "$DISPLAY_NUM"
     fi
 fi
 
-# Wait up to 3 seconds for port 5900 to accept connections
+# Wait up to 3 seconds for VNC port to accept connections
 for i in $(seq 1 30); do
-    if (exec 3<>/dev/tcp/127.0.0.1/5900) 2>/dev/null; then
+    if (exec 3<>/dev/tcp/127.0.0.1/"$VNC_PORT") 2>/dev/null; then
         exec 3<&-
         exec 3>&-
         break
@@ -33,9 +35,9 @@ for i in $(seq 1 30); do
 done
 
 # 2. Stop any existing websockify instance
-pkill -9 -f "websockify" 2>/dev/null || true
-pkill -9 -f "python3 -m websockify" 2>/dev/null || true
-sleep 0.3
+pkill -9 -f "websockify.*$PORT" 2>/dev/null || true
+pkill -9 -f "python3 -m websockify.*$PORT" 2>/dev/null || true
+sleep 0.2
 
 # 3. Handle TLS certificate if requested
 SSL_ARGS=""
@@ -53,18 +55,17 @@ if [ "$USE_TLS" = "1" ] || [ "$USE_TLS" = "true" ]; then
 fi
 
 # 4. Launch websockify with embedded noVNC web server in background
-# Optimized python invocation with -O (bytecode optimize) and -u (unbuffered)
 echo "[Web Mode] Launching optimized noVNC + WebSockify server on port $PORT..."
 PYTHONPATH="$SCRIPT_DIR" python3 -O -u -m websockify \
     --web="$NOVNC_DIR" \
     $SSL_ARGS \
     --log-file=/var/log/websockify.log \
-    "$PORT" 127.0.0.1:5900 >/dev/null 2>&1 &
+    "$PORT" "127.0.0.1:$VNC_PORT" >/dev/null 2>&1 &
 
 PID=$!
 echo "$PID" > /var/run/websockify.pid 2>/dev/null || true
 
-sleep 0.8
+sleep 0.6
 if pgrep -f "websockify" >/dev/null 2>&1; then
     PID=$(pgrep -f "websockify" | head -n 1)
     echo "$PID" > /var/run/websockify.pid 2>/dev/null || true

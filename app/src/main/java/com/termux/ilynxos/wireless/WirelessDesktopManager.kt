@@ -93,9 +93,13 @@ class WirelessDesktopManager private constructor(private val context: Context) {
         webManager.checkStatus()
     }
 
-    suspend fun startVnc(port: Int = vncManager.getPort(), password: String = vncManager.getPassword()): Boolean {
-        appendLog("[VNC] Starting VNC server on port $port...")
-        val success = vncManager.start(port, password)
+    suspend fun startVnc(
+        port: Int = vncManager.getPort(),
+        password: String = vncManager.getPassword(),
+        newSession: Boolean = vncManager.isNewSession()
+    ): Boolean {
+        appendLog("[VNC] Starting VNC server on port $port (Session: ${if (newSession) "New Dedicated :1" else "Mirror :0"})...")
+        val success = vncManager.start(port, password, newSession)
         if (success) {
             appendLog("[VNC] VNC server started successfully on port $port.")
         } else {
@@ -111,20 +115,25 @@ class WirelessDesktopManager private constructor(private val context: Context) {
         return res
     }
 
-    suspend fun restartVnc(port: Int = vncManager.getPort(), password: String = vncManager.getPassword()): Boolean {
+    suspend fun restartVnc(
+        port: Int = vncManager.getPort(),
+        password: String = vncManager.getPassword(),
+        newSession: Boolean = vncManager.isNewSession()
+    ): Boolean {
         appendLog("[VNC] Restarting VNC server...")
         stopVnc()
         kotlinx.coroutines.delay(500)
-        return startVnc(port, password)
+        return startVnc(port, password, newSession)
     }
 
     suspend fun startWeb(
         port: Int = webManager.getPort(),
         password: String = webManager.getPassword(),
-        useTls: Boolean = webManager.isTlsEnabled()
+        useTls: Boolean = webManager.isTlsEnabled(),
+        newSession: Boolean = webManager.isNewSession()
     ): Boolean {
-        appendLog("[Web] Starting Web Mode (HTML5 Browser) on port $port (TLS: $useTls)...")
-        val success = webManager.start(port, password, useTls)
+        appendLog("[Web] Starting Web Mode on port $port (Session: ${if (newSession) "New Dedicated :1" else "Mirror :0"}, TLS: $useTls)...")
+        val success = webManager.start(port, password, useTls, newSession)
         if (success) {
             val proto = if (useTls) "https" else "http"
             val ip = getWifiIp() ?: "localhost"
@@ -145,12 +154,13 @@ class WirelessDesktopManager private constructor(private val context: Context) {
     suspend fun restartWeb(
         port: Int = webManager.getPort(),
         password: String = webManager.getPassword(),
-        useTls: Boolean = webManager.isTlsEnabled()
+        useTls: Boolean = webManager.isTlsEnabled(),
+        newSession: Boolean = webManager.isNewSession()
     ): Boolean {
         appendLog("[Web] Restarting Web Mode...")
         stopWeb()
         kotlinx.coroutines.delay(500)
-        return startWeb(port, password, useTls)
+        return startWeb(port, password, useTls, newSession)
     }
 
     suspend fun startAll(): Boolean {

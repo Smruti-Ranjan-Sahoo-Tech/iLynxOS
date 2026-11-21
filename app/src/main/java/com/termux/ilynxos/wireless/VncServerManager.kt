@@ -23,6 +23,7 @@ class VncServerManager(private val context: Context) {
         private const val KEY_PORT = "vnc_port"
         private const val KEY_PASSWORD = "vnc_password"
         private const val KEY_ENABLED = "vnc_enabled"
+        private const val KEY_SESSION_MODE = "vnc_session_mode"
         const val DEFAULT_PORT = 5900
     }
 
@@ -56,6 +57,9 @@ class VncServerManager(private val context: Context) {
     fun isEnabled(): Boolean = prefs.getBoolean(KEY_ENABLED, true)
     fun setEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_ENABLED, enabled).apply()
 
+    fun isNewSession(): Boolean = prefs.getBoolean(KEY_SESSION_MODE, true)
+    fun setNewSession(newSession: Boolean) = prefs.edit().putBoolean(KEY_SESSION_MODE, newSession).apply()
+
     private fun checkSocketListening(port: Int): Boolean {
         return try {
             Socket().use { socket ->
@@ -69,7 +73,11 @@ class VncServerManager(private val context: Context) {
         }
     }
 
-    suspend fun start(port: Int = getPort(), password: String = getPassword()): Boolean = withContext(Dispatchers.IO) {
+    suspend fun start(
+        port: Int = getPort(),
+        password: String = getPassword(),
+        newSession: Boolean = isNewSession()
+    ): Boolean = withContext(Dispatchers.IO) {
         if (!envManager.isInstalled()) {
             _state.value = _state.value.copy(
                 status = ServiceStatus.NOT_INSTALLED,
@@ -80,25 +88,32 @@ class VncServerManager(private val context: Context) {
 
         setPort(port)
         setPassword(password)
+        setNewSession(newSession)
 
         _state.value = _state.value.copy(status = ServiceStatus.STARTING, error = null)
 
+        val dispNum = if (newSession) "1" else "0"
+
         // 1. Ensure desktop session and X11 server are active
-        if (!runtimeEngine.isSessionRunning()) {
+        if (dispNum == "0" && !runtimeEngine.isSessionRunning()) {
             Log.i(TAG, "Desktop session not running; starting LinuxSessionService...")
             try {
                 com.termux.ilynxos.runtime.LinuxSessionService.startService(context)
                 val socketFile = File(envManager.tmpDir, ".X11-unix/X0")
-                for (i in 1..40) {
+                for (i in 1..30) {
                     if (socketFile.exists() && runtimeEngine.isSessionRunning()) {
                         Log.i(TAG, "Session and X11 socket verified ready for VNC")
                         break
                     }
-                    kotlinx.coroutines.delay(200)
+                    kotlinx.coroutines.delay(100)
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed starting desktop session: ${e.message}")
             }
+        } else if (!runtimeEngine.isSessionRunning()) {
+            try {
+                com.termux.ilynxos.runtime.LinuxSessionService.startService(context)
+            } catch (_: Exception) {}
         }
 
         // 2. Ensure wireless scripts unpacked
@@ -107,25 +122,25 @@ class VncServerManager(private val context: Context) {
         // 3. Write IPC request to tmpDir (watched by supervisor loop in PRoot desktop session)
         try {
             val reqFile = File(envManager.tmpDir, "vnc_start.req")
-            reqFile.writeText("$port\n$password\n")
-            Log.i(TAG, "Written vnc_start.req (port: $port)")
+            reqFile.writeText("$port\n$password\n$dispNum\n")
+            Log.i(TAG, "Written vnc_start.req (port: $port, disp: $dispNum)")
         } catch (e: Exception) {
             Log.e(TAG, "Failed writing vnc_start.req: ${e.message}")
         }
 
+        // Trigger startup immediately to eliminate delay
+        try {
+            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh $port '$password' $dispNum &") {}
+        } catch (_: Exception) {}
+
         // 4. Poll for socket availability
         var socketOpen = false
         for (i in 1..25) {
-            kotlinx.coroutines.delay(400)
+            kotlinx.coroutines.delay(150)
             if (checkSocketListening(port)) {
                 Log.i(TAG, "VNC server detected listening on port $port (attempt $i)")
                 socketOpen = true
                 break
-            }
-            if (i == 5 && !checkSocketListening(port)) {
-                try {
-                    runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh $port '$password' &") {}
-                } catch (_: Exception) {}
             }
         }
 
@@ -163,10 +178,10 @@ class VncServerManager(private val context: Context) {
         return@withContext true
     }
 
-    suspend fun restart(port: Int = getPort(), password: String = getPassword()): Boolean {
+    suspend fun restart(port: Int = getPort(), password: String = getPassword(), newSession: Boolean = isNewSession()): Boolean {
         stop()
         kotlinx.coroutines.delay(500)
-        return start(port, password)
+        return start(port, password, newSession)
     }
 
     suspend fun checkStatus(): Boolean = withContext(Dispatchers.IO) {
