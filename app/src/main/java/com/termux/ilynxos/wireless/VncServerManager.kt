@@ -47,7 +47,11 @@ class VncServerManager(private val context: Context) {
         }
     }
 
-    fun getPort(): Int = prefs.getInt(KEY_PORT, DEFAULT_PORT)
+    fun getPort(): Int {
+        val port = prefs.getInt(KEY_PORT, 0)
+        if (port != 0 && port != 5900 && port != 5901) return port
+        return if (isNewSession()) 5901 else 5900
+    }
     fun setPort(port: Int) = prefs.edit().putInt(KEY_PORT, port).apply()
 
     fun getPassword(): String = prefs.getString(KEY_PASSWORD, "") ?: ""
@@ -57,7 +61,15 @@ class VncServerManager(private val context: Context) {
     fun setEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_ENABLED, enabled).apply()
 
     fun isNewSession(): Boolean = prefs.getBoolean(KEY_SESSION_MODE, true)
-    fun setNewSession(newSession: Boolean) = prefs.edit().putBoolean(KEY_SESSION_MODE, newSession).apply()
+    fun setNewSession(newSession: Boolean) {
+        prefs.edit().putBoolean(KEY_SESSION_MODE, newSession).apply()
+        val currentPort = prefs.getInt(KEY_PORT, 0)
+        if (currentPort == 0 || currentPort == 5900 || currentPort == 5901) {
+            val targetPort = if (newSession) 5901 else 5900
+            setPort(targetPort)
+            _state.value = _state.value.copy(port = targetPort)
+        }
+    }
 
     private fun checkSocketListening(port: Int): Boolean {
         return try {

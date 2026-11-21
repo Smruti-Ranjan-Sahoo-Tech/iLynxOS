@@ -79,7 +79,12 @@ fun VncModeCard(
     onRestart: (port: Int, pass: String, newSession: Boolean) -> Unit
 ) {
     val clipboardManager = LocalClipboardManager.current
-    var portText by remember(state.port) { mutableStateOf(state.port.toString()) }
+    val effectivePort = remember(state.port, isNewSession) {
+        if (isNewSession && (state.port == 5900 || state.port == 5901)) 5901
+        else if (!isNewSession && (state.port == 5900 || state.port == 5901)) 5900
+        else state.port
+    }
+    var portText by remember(effectivePort) { mutableStateOf(effectivePort.toString()) }
     var passwordText by remember(initialPassword) { mutableStateOf(initialPassword) }
     var passwordVisible by remember { mutableStateOf(false) }
 
