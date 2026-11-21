@@ -18,12 +18,12 @@ else
     echo "[iLynxOS Wireless] vncserver is already installed."
 fi
 
-# 2. Check and install x11vnc & xvfb for screen mirroring and fallbacks
-if ! command -v x11vnc >/dev/null 2>&1 || ! command -v Xvfb >/dev/null 2>&1; then
-    echo "[iLynxOS Wireless] Installing x11vnc and xvfb..."
-    apt-get install -y --no-install-recommends x11vnc xvfb || true
+# 2. Check and install x11vnc, xvfb & feh for desktop background & fallback sessions
+if ! command -v x11vnc >/dev/null 2>&1 || ! command -v Xvfb >/dev/null 2>&1 || ! command -v feh >/dev/null 2>&1; then
+    echo "[iLynxOS Wireless] Installing x11vnc, xvfb and feh..."
+    apt-get install -y --no-install-recommends x11vnc xvfb feh || true
 else
-    echo "[iLynxOS Wireless] x11vnc and xvfb are already installed."
+    echo "[iLynxOS Wireless] x11vnc, xvfb and feh are already installed."
 fi
 
 # 3. Check and install openssl for TLS encryption

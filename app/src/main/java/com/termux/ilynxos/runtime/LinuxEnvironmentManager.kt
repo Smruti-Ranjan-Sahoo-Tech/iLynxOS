@@ -359,8 +359,11 @@ class LinuxEnvironmentManager(private val context: Context) {
                     sleep 0.1
                 done
 
-                # 4. Set solid dark background immediately so display is visible instantly (no black screen)
-                if command -v xsetroot >/dev/null 2>&1; then
+                # 4. Set background immediately so display is visible instantly (no black screen)
+                WALLPAPER="/usr/share/backgrounds/windows-11-bloom-dark.jpg"
+                if command -v feh >/dev/null 2>&1 && [ -f "${'$'}WALLPAPER" ]; then
+                    feh --bg-fill "${'$'}WALLPAPER" 2>/dev/null || true
+                elif command -v xsetroot >/dev/null 2>&1; then
                     xsetroot -solid "#1e1e2e" 2>/dev/null || true
                 fi
 
@@ -511,13 +514,62 @@ class LinuxEnvironmentManager(private val context: Context) {
                 }
             }
 
-            val pcmanfmConfig = File(rootfsDir, "root/.config/pcmanfm-qt/lxqt/settings.conf")
-            if (pcmanfmConfig.exists()) {
-                val content = pcmanfmConfig.readText()
-                if (content.contains("SingleClick=false")) {
-                    pcmanfmConfig.writeText(content.replace("SingleClick=false", "SingleClick=true"))
-                    Log.i(TAG, "Enabled SingleClick for touchscreen responsiveness in pcmanfm-qt")
+            // 5c. Ensure PCManFM-Qt desktop wallpaper and shortcuts configuration
+            try {
+                val lxqtConfDir = File(rootfsDir, "root/.config/pcmanfm-qt/lxqt")
+                val vncConfDir = File(rootfsDir, "root/.config/pcmanfm-qt/vnc")
+                val defaultConfDir = File(rootfsDir, "root/.config/pcmanfm-qt/default")
+                val etcDefaultConfDir = File(rootfsDir, "etc/xdg/pcmanfm-qt/default")
+                val etcLxqtConfDir = File(rootfsDir, "etc/xdg/pcmanfm-qt/lxqt")
+
+                lxqtConfDir.mkdirs()
+                vncConfDir.mkdirs()
+                defaultConfDir.mkdirs()
+                etcDefaultConfDir.mkdirs()
+                etcLxqtConfDir.mkdirs()
+
+                val desktopItemsConfig = """
+                    [General]
+                    wallpaper=/usr/share/backgrounds/windows-11-bloom-dark.jpg
+                    wallpaper_mode=crop
+                    show_wm_menu=false
+                    sort_type=0
+                    sort_by=0
+                    shadow_hidden=false
+                    show_hidden=false
+
+                    [Folder]
+                    home=true
+                    trash=true
+                    computer=true
+                    network=false
+                """.trimIndent()
+
+                listOf(lxqtConfDir, vncConfDir, defaultConfDir, etcDefaultConfDir, etcLxqtConfDir).forEach { dir ->
+                    listOf("desktop-items-0.conf", "desktop-items-1.conf", "desktop-items-default.conf").forEach { filename ->
+                        val target = File(dir, filename)
+                        if (!target.exists() || target.length() == 0L) {
+                            target.writeText(desktopItemsConfig)
+                            target.setReadable(true, false)
+                        }
+                    }
                 }
+
+                // Update settings.conf to enable SingleClick and set wallpaper
+                listOf(lxqtConfDir, vncConfDir).forEach { dir ->
+                    val settingsFile = File(dir, "settings.conf")
+                    if (settingsFile.exists()) {
+                        var content = settingsFile.readText()
+                        content = content.replace("SingleClick=false", "SingleClick=true")
+                        content = content.replace("Wallpaper=", "Wallpaper=/usr/share/backgrounds/windows-11-bloom-dark.jpg")
+                        content = content.replace("WallpaperMode=none", "WallpaperMode=crop")
+                        content = content.replace("BgColor=#000000", "BgColor=#1e1e2e")
+                        settingsFile.writeText(content)
+                    }
+                }
+                Log.i(TAG, "Configured PCManFM-Qt desktop wallpaper and single-click responsiveness")
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed configuring PCManFM-Qt wallpaper: ${e.message}")
             }
 
             // 5b. Fix Openbox theme paths so Openbox never crashes or delays
@@ -644,34 +696,74 @@ class LinuxEnvironmentManager(private val context: Context) {
             val vncConfigDir = File(rootDir, ".vnc")
             vncConfigDir.mkdirs()
             val xstartupFile = File(vncConfigDir, "xstartup")
-            if (!xstartupFile.exists()) {
-                writeExecutableScript(xstartupFile, """
-                    #!/bin/bash
-                    unset SESSION_MANAGER
-                    unset DBUS_SESSION_BUS_ADDRESS
-                    export DISPLAY=:1
+            writeExecutableScript(xstartupFile, """
+                #!/bin/bash
+                unset SESSION_MANAGER
+                unset DBUS_SESSION_BUS_ADDRESS
+                export DISPLAY=:1
+                export HOME=/root
+                export USER=root
+                export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${'$'}PATH
+                export XDG_CURRENT_DESKTOP=LXQt
+                export XDG_SESSION_DESKTOP=LXQt
+                export DESKTOP_SESSION=lxqt
+                export XDG_MENU_PREFIX="lxqt-"
+                export QT_QPA_PLATFORMTHEME=lxqt
+                export QT_PLATFORM_PLUGIN=lxqt
+                export QT_STYLE_OVERRIDE=Fusion
+                export GTK_THEME=Greybird-dark
+                export XCURSOR_THEME=Adwaita
+                export LIBGL_ALWAYS_SOFTWARE=1
+                export GDK_BACKEND=x11
+                export GIO_USE_VFS=local
+                export GVFS_DISABLE_FUSE=1
 
-                    if command -v startlxqt >/dev/null 2>&1; then
-                        exec startlxqt
-                    elif command -v openbox-session >/dev/null 2>&1; then
-                        exec openbox-session
+                dbus-uuidgen --ensure 2>/dev/null || true
+                eval ${'$'}(dbus-launch --sh-syntax --exit-with-session) 2>/dev/null || true
+
+                WALLPAPER="/usr/share/backgrounds/windows-11-bloom-dark.jpg"
+                if [ ! -f "${'$'}WALLPAPER" ]; then
+                    FOUND=${'$'}(find /usr/share/backgrounds /usr/share/wallpapers -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null | head -n 1)
+                    [ -n "${'$'}FOUND" ] && WALLPAPER="${'$'}FOUND"
+                fi
+
+                if command -v feh >/dev/null 2>&1 && [ -f "${'$'}WALLPAPER" ]; then
+                    feh --bg-fill "${'$'}WALLPAPER" 2>/dev/null || true
+                elif command -v hsetroot >/dev/null 2>&1 && [ -f "${'$'}WALLPAPER" ]; then
+                    hsetroot -fill "${'$'}WALLPAPER" 2>/dev/null || true
+                elif command -v xsetroot >/dev/null 2>&1; then
+                    xsetroot -solid "#1e1e2e" 2>/dev/null || true
+                fi
+
+                if command -v openbox >/dev/null 2>&1; then
+                    if [ -f "/root/.config/openbox/rc.xml" ]; then
+                        openbox --config-file "/root/.config/openbox/rc.xml" >/dev/null 2>&1 &
                     else
-                        xsetroot -solid "#1e1e2e" 2>/dev/null || true
-                        if command -v openbox >/dev/null 2>&1; then
-                            openbox &
-                        fi
-                        if command -v pcmanfm-qt >/dev/null 2>&1; then
-                            pcmanfm-qt --desktop --profile=lxqt &
-                        fi
-                        if command -v lxqt-panel >/dev/null 2>&1; then
-                            lxqt-panel &
-                        elif command -v xfce4-panel >/dev/null 2>&1; then
-                            xfce4-panel --sm-client-disable --disable-wm-check &
-                        fi
-                        wait
+                        openbox >/dev/null 2>&1 &
                     fi
-                """.trimIndent())
-            }
+                fi
+                sleep 0.2
+
+                if command -v pcmanfm-qt >/dev/null 2>&1; then
+                    pcmanfm-qt --desktop --profile=vnc >/dev/null 2>&1 &
+                fi
+                sleep 0.2
+
+                if command -v lxqt-panel >/dev/null 2>&1; then
+                    lxqt-panel >/dev/null 2>&1 &
+                elif command -v xfce4-panel >/dev/null 2>&1; then
+                    xfce4-panel --sm-client-disable --disable-wm-check >/dev/null 2>&1 &
+                fi
+
+                if command -v pcmanfm-qt >/dev/null 2>&1 && [ -f "${'$'}WALLPAPER" ]; then
+                    (
+                        sleep 1
+                        pcmanfm-qt --set-wallpaper="${'$'}WALLPAPER" --wallpaper-mode=crop --profile=vnc >/dev/null 2>&1 || true
+                    ) &
+                fi
+
+                wait
+            """.trimIndent())
 
             Log.i(TAG, "Unpacked wireless desktop scripts and installed /usr/local/bin wrappers.")
         } catch (e: Exception) {
