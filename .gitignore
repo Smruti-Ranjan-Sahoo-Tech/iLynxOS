@@ -106,3 +106,7 @@ de
 tmp/
 core
 *.pid
+
+# Promotional & Marketing Assets
+social/
+
