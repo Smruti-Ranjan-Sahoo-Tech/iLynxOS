@@ -42,7 +42,8 @@ class VncServerManager(private val context: Context) {
     val state: StateFlow<ServiceState> = _state.asStateFlow()
 
     init {
-        if (getPassword().isEmpty()) {
+        val pass = prefs.getString(KEY_PASSWORD, "") ?: ""
+        if (pass.isEmpty() || pass.startsWith("ilynx")) {
             setPassword("raja1234")
         }
     }
@@ -54,7 +55,14 @@ class VncServerManager(private val context: Context) {
     }
     fun setPort(port: Int) = prefs.edit().putInt(KEY_PORT, port).apply()
 
-    fun getPassword(): String = prefs.getString(KEY_PASSWORD, "") ?: ""
+    fun getPassword(): String {
+        val pass = prefs.getString(KEY_PASSWORD, "") ?: ""
+        if (pass.isEmpty() || pass.startsWith("ilynx")) {
+            setPassword("raja1234")
+            return "raja1234"
+        }
+        return pass
+    }
     fun setPassword(pass: String) = prefs.edit().putString(KEY_PASSWORD, pass).apply()
 
     fun isEnabled(): Boolean = prefs.getBoolean(KEY_ENABLED, true)
@@ -97,9 +105,10 @@ class VncServerManager(private val context: Context) {
             return@withContext false
         }
 
+        val safePass = if (password.isEmpty() || password.startsWith("ilynx")) "raja1234" else password
         val effectivePort = if (newSession && port == 5900) 5901 else if (!newSession && port == 5901) 5900 else port
         setPort(effectivePort)
-        setPassword(password)
+        setPassword(safePass)
         setNewSession(newSession)
 
         _state.value = _state.value.copy(status = ServiceStatus.STARTING, error = null)
@@ -131,19 +140,12 @@ class VncServerManager(private val context: Context) {
         // 2. Ensure wireless scripts unpacked
         envManager.unpackWirelessDesktopScripts()
 
-        // 3. Write IPC request to tmpDir (watched by supervisor loop in PRoot desktop session)
+        // 3. Trigger startup cleanly via CLI execution (script uses file-lock to prevent race)
         try {
-            val reqFile = File(envManager.tmpDir, "vnc_start.req")
-            reqFile.writeText("$effectivePort\n$password\n$dispNum\n")
-            Log.i(TAG, "Written vnc_start.req (port: $effectivePort, disp: $dispNum)")
+            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh $effectivePort '$safePass' $dispNum 1280x720 &") {}
         } catch (e: Exception) {
-            Log.e(TAG, "Failed writing vnc_start.req: ${e.message}")
+            Log.e(TAG, "Failed executing start-vnc.sh: ${e.message}")
         }
-
-        // Trigger startup immediately to eliminate delay
-        try {
-            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh $effectivePort '$password' $dispNum 1280x720 &") {}
-        } catch (_: Exception) {}
 
         // 4. Poll for socket availability
         var socketOpen = false

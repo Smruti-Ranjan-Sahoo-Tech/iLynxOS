@@ -353,7 +353,7 @@ class LinuxEnvironmentManager(private val context: Context) {
                 # 3b. Actively wait for X11 display server to become ready before launching apps
                 echo "[iLynxOS] Waiting for X11 display ${'$'}DISPLAY to become ready..."
                 for i in $(seq 1 60); do
-                    if xsetroot -display "${'$'}DISPLAY" -solid "#1e1e2e" 2>/dev/null; then
+                    if xsetroot -display "${'$'}DISPLAY" -solid "#1e1e2e" -cursor_name left_ptr 2>/dev/null; then
                         break
                     fi
                     sleep 0.1
@@ -546,11 +546,20 @@ class LinuxEnvironmentManager(private val context: Context) {
                 """.trimIndent()
 
                 listOf(lxqtConfDir, vncConfDir, defaultConfDir, etcDefaultConfDir, etcLxqtConfDir).forEach { dir ->
-                    listOf("desktop-items-0.conf", "desktop-items-1.conf", "desktop-items-default.conf").forEach { filename ->
+                    listOf("desktop-items-0.conf", "desktop-items-1.conf", "desktop-items-default.conf", "desktop-items-screen.conf", "desktop-items-screen0.conf", "desktop-items-VIRTUAL1.conf").forEach { filename ->
                         val target = File(dir, filename)
-                        if (!target.exists() || target.length() == 0L) {
-                            target.writeText(desktopItemsConfig)
-                            target.setReadable(true, false)
+                        target.writeText(desktopItemsConfig)
+                        target.setReadable(true, false)
+                    }
+                }
+
+                // Ensure desktop shortcuts are executable
+                val desktopFolder = File(rootfsDir, "root/Desktop")
+                if (desktopFolder.exists()) {
+                    desktopFolder.listFiles()?.forEach { file ->
+                        if (file.name.endsWith(".desktop")) {
+                            file.setExecutable(true, false)
+                            file.setReadable(true, false)
                         }
                     }
                 }

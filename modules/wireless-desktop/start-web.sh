@@ -13,6 +13,10 @@ USE_TLS="${3:-0}"
 DISPLAY_NUM="${4:-1}"
 RESOLUTION="${5:-1280x720}"
 
+if [ -z "$PASSWORD" ] || [[ "$PASSWORD" == ilynx* ]]; then
+    PASSWORD="raja1234"
+fi
+
 if [ "$DISPLAY_NUM" = "0" ]; then
     VNC_PORT="5900"
 else
@@ -22,6 +26,13 @@ fi
 SCRIPT_DIR="/usr/local/share/ilynxos/wireless-desktop"
 NOVNC_DIR="$SCRIPT_DIR/novnc"
 
+# Ensure lock so parallel calls don't race
+LOCKFILE="/tmp/start-web.lock"
+exec 201>"$LOCKFILE" 2>/dev/null || true
+if command -v flock >/dev/null 2>&1; then
+    flock -n 201 || { echo "Web server launcher already running"; exit 0; }
+fi
+
 mkdir -p /var/log /var/run /root/.ilynxos/ssl 2>/dev/null || true
 
 echo "=========================================="
@@ -29,24 +40,24 @@ echo " Starting i-Lynx OS Web Desktop (HTML5)... "
 echo " Port: $PORT | Display: :$DISPLAY_NUM | VNC Backend: :$VNC_PORT "
 echo "=========================================="
 
-# 2. Ensure VNC server backend is running on 127.0.0.1:$VNC_PORT
-if ! (exec 3<>/dev/tcp/127.0.0.1/"$VNC_PORT") 2>/dev/null; then
+# 2. Check if VNC backend is listening on 127.0.0.1:$VNC_PORT
+IS_RUNNING=0
+if python3 -c "import socket; s = socket.socket(); s.settimeout(0.5); s.connect(('127.0.0.1', $VNC_PORT)); s.close()" 2>/dev/null; then
+    IS_RUNNING=1
+fi
+
+if [ "$IS_RUNNING" = "0" ]; then
     echo "[Web Mode] VNC backend not running on port $VNC_PORT. Starting VNC backend..."
     if [ -x "$SCRIPT_DIR/start-vnc.sh" ]; then
         "$SCRIPT_DIR/start-vnc.sh" "$VNC_PORT" "$PASSWORD" "$DISPLAY_NUM" "$RESOLUTION"
     elif [ -x "/usr/local/bin/start-vnc" ]; then
         /usr/local/bin/start-vnc "$VNC_PORT" "$PASSWORD" "$DISPLAY_NUM" "$RESOLUTION"
     fi
-else
-    exec 3<&- 2>/dev/null || true
-    exec 3>&- 2>/dev/null || true
 fi
 
-# Wait up to 4 seconds for VNC port to accept connections
-for i in $(seq 1 40); do
-    if (exec 3<>/dev/tcp/127.0.0.1/"$VNC_PORT") 2>/dev/null; then
-        exec 3<&-
-        exec 3>&-
+# Wait up to 5 seconds for VNC backend to become available
+for i in $(seq 1 50); do
+    if python3 -c "import socket; s = socket.socket(); s.settimeout(0.2); s.connect(('127.0.0.1', $VNC_PORT)); s.close()" 2>/dev/null; then
         break
     fi
     sleep 0.1
@@ -72,18 +83,25 @@ if [ "$USE_TLS" = "1" ] || [ "$USE_TLS" = "true" ]; then
     fi
 fi
 
-# 5. Launch websockify with embedded noVNC web server in background
-echo "[Web Mode] Launching optimized noVNC + WebSockify server on port $PORT..."
+# 5. Launch websockify bound explicitly to 0.0.0.0:$PORT
+echo "[Web Mode] Launching optimized noVNC + WebSockify server on 0.0.0.0:$PORT..."
 PYTHONPATH="$SCRIPT_DIR" python3 -O -u -m websockify \
     --web="$NOVNC_DIR" \
     $SSL_ARGS \
     --log-file=/var/log/websockify.log \
-    "$PORT" "127.0.0.1:$VNC_PORT" >/dev/null 2>&1 &
+    "0.0.0.0:$PORT" "127.0.0.1:$VNC_PORT" >/dev/null 2>&1 &
 
 PID=$!
 echo "$PID" > /var/run/websockify.pid 2>/dev/null || true
 
-sleep 0.6
+# Verify websockify is listening
+for i in $(seq 1 30); do
+    if python3 -c "import socket; s = socket.socket(); s.settimeout(0.2); s.connect(('127.0.0.1', $PORT)); s.close()" 2>/dev/null; then
+        break
+    fi
+    sleep 0.1
+done
+
 if pgrep -f "websockify" >/dev/null 2>&1; then
     PID=$(pgrep -f "websockify" | head -n 1)
     echo "$PID" > /var/run/websockify.pid 2>/dev/null || true

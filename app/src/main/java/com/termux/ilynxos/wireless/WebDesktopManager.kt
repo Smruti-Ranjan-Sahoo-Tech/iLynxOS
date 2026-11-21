@@ -46,7 +46,8 @@ class WebDesktopManager(private val context: Context) {
     val isXpraInstalled: StateFlow<Boolean> = _isXpraInstalled.asStateFlow()
 
     init {
-        if (getPassword().isEmpty()) {
+        val pass = prefs.getString(KEY_PASSWORD, "") ?: ""
+        if (pass.isEmpty() || pass.startsWith("ilynx")) {
             setPassword("raja1234")
         }
     }
@@ -54,7 +55,14 @@ class WebDesktopManager(private val context: Context) {
     fun getPort(): Int = prefs.getInt(KEY_PORT, DEFAULT_PORT)
     fun setPort(port: Int) = prefs.edit().putInt(KEY_PORT, port).apply()
 
-    fun getPassword(): String = prefs.getString(KEY_PASSWORD, "") ?: ""
+    fun getPassword(): String {
+        val pass = prefs.getString(KEY_PASSWORD, "") ?: ""
+        if (pass.isEmpty() || pass.startsWith("ilynx")) {
+            setPassword("raja1234")
+            return "raja1234"
+        }
+        return pass
+    }
     fun setPassword(pass: String) = prefs.edit().putString(KEY_PASSWORD, pass).apply()
 
     fun isEnabled(): Boolean = prefs.getBoolean(KEY_ENABLED, true)
@@ -101,8 +109,9 @@ class WebDesktopManager(private val context: Context) {
             return@withContext false
         }
 
+        val safePass = if (password.isEmpty() || password.startsWith("ilynx")) "raja1234" else password
         setPort(port)
-        if (password.isNotEmpty()) setPassword(password)
+        setPassword(safePass)
         setTlsEnabled(useTls)
         setNewSession(newSession)
 
@@ -135,20 +144,13 @@ class WebDesktopManager(private val context: Context) {
         // Ensure wireless desktop scripts and noVNC/websockify unpacked
         envManager.unpackWirelessDesktopScripts()
 
-        // Write IPC request
+        // Trigger startup cleanly via CLI execution (script uses file-lock to prevent race)
         val tlsFlag = if (useTls) "1" else "0"
         try {
-            val reqFile = File(envManager.tmpDir, "web_start.req")
-            reqFile.writeText("$port\n$password\n$tlsFlag\n$dispNum\n")
-            Log.i(TAG, "Written web_start.req (port: $port, tls: $tlsFlag, disp: $dispNum)")
+            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-web.sh $port '$safePass' $tlsFlag $dispNum 1280x720 &") {}
         } catch (e: Exception) {
-            Log.e(TAG, "Failed writing web_start.req: ${e.message}")
+            Log.e(TAG, "Failed executing start-web.sh: ${e.message}")
         }
-
-        // Trigger startup immediately to eliminate delay
-        try {
-            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-web.sh $port '$password' $tlsFlag $dispNum 1280x720 &") {}
-        } catch (_: Exception) {}
 
         // Poll for socket availability
         var socketOpen = false
@@ -163,7 +165,7 @@ class WebDesktopManager(private val context: Context) {
 
         val ip = networkDiscovery.getFreshNetworkInfo().ipAddress
         val proto = if (useTls) "https" else "http"
-        val encPass = if (password.isNotEmpty()) "&password=" + java.net.URLEncoder.encode(password, "UTF-8") else ""
+        val encPass = if (safePass.isNotEmpty()) "&password=" + java.net.URLEncoder.encode(safePass, "UTF-8") else ""
         val address = if (ip != null) "$proto://$ip:$port/vnc.html?autoconnect=true&resize=scale&quality=6&compression=1$encPass" else "$proto://localhost:$port/vnc.html?autoconnect=true&resize=scale&quality=6&compression=1$encPass"
 
         _state.value = ServiceState(
