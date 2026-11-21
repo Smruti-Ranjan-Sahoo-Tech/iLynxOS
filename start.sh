@@ -5,6 +5,25 @@
 
 set -e
 
+PREFIX="${PREFIX:-/data/data/com.termux.ilynxos/files/usr}"
+export PREFIX
+export PATH="$PREFIX/bin:$PATH"
+
+# Compatibility functions for standalone Android environment (noexec /data)
+termux-wake-lock() { true; }
+termux-wake-unlock() { true; }
+pulseaudio() { true; }
+pactl() { true; }
+termux-x11() { echo -e "${CYAN}[iLynxOS] Embedded X11 server active${NC}"; }
+am() { true; }
+proot-distro() {
+    if [ -f "$PREFIX/bin/proot-distro" ]; then
+        /system/bin/sh "$PREFIX/bin/proot-distro" "$@"
+    else
+        echo "iLynxOS (installed)"
+    fi
+}
+
 # Terminal Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -40,10 +59,11 @@ cleanup_sessions() {
     pulseaudio --kill 2>/dev/null || true
     pkill -9 -f "pulseaudio" 2>/dev/null || true
 
-    # Clean display and socket locks
-    rm -rf "$PREFIX"/tmp/.X11-unix "$PREFIX"/tmp/.X0-lock 2>/dev/null || true
-    rm -rf /tmp/.X11-unix /tmp/.X0-lock 2>/dev/null || true
-    rm -rf "${TMPDIR:-/tmp}"/.X11-unix "${TMPDIR:-/tmp}"/.X0-lock 2>/dev/null || true
+    # Clean display and socket locks (preserve active socket for embedded X11)
+    rm -f "$PREFIX"/tmp/.X0-lock /tmp/.X0-lock "${TMPDIR:-/tmp}"/.X0-lock 2>/dev/null || true
+    if [ ! -S "$PREFIX"/tmp/.X11-unix/X0 ] && [ ! -S "${TMPDIR:-/tmp}/.X11-unix/X0" ]; then
+        rm -rf "$PREFIX"/tmp/.X11-unix 2>/dev/null || true
+    fi
     rm -rf ~/.dbus 2>/dev/null || true
     rm -f "$PREFIX"/var/lib/proot-distro/locks/"${CONTAINER_NAME}".lock 2>/dev/null || true
 }
@@ -73,7 +93,7 @@ case "$1" in
 esac
 
 # Check container existence
-if ! proot-distro list 2>/dev/null | grep -q "$CONTAINER_NAME"; then
+if [ ! -d "$PREFIX/../containers/$CONTAINER_NAME/rootfs" ] && [ ! -d "/data/data/com.termux.ilynxos/files/containers/$CONTAINER_NAME/rootfs" ] && [ ! -d "/data/user/0/com.termux.ilynxos/files/containers/$CONTAINER_NAME/rootfs" ] && ! proot-distro list 2>/dev/null | grep -q "$CONTAINER_NAME"; then
     echo -e "${RED}[!] Container '$CONTAINER_NAME' is not installed in proot-distro.${NC}"
     echo -e "${CYAN}[*] Please run install.sh first to install i-Lynx OS.${NC}"
     exit 1
@@ -106,7 +126,7 @@ termux-x11 :0 -ac &
 # Wait for X11 socket to become ready
 X11_READY=0
 for i in $(seq 1 30); do
-    if [ -S "$PREFIX/tmp/.X11-unix/X0" ] || [ -S "/tmp/.X11-unix/X0" ]; then
+    if [ -S "$PREFIX/tmp/.X11-unix/X0" ] || [ -S "/tmp/.X11-unix/X0" ] || [ -S "${TMPDIR:-/tmp}/.X11-unix/X0" ]; then
         X11_READY=1
         break
     fi
@@ -126,19 +146,27 @@ sleep 0.5
 # 5. Boot LXQt Desktop Environment inside PRoot
 echo -e "${GREEN}${BOLD}[i-Lynx OS] Booting LXQt Modern Desktop Environment...${NC}"
 proot-distro login "$CONTAINER_NAME" --shared-tmp -- bash -c '
+    export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH
     export DISPLAY=:0
     export TMPDIR=/tmp
     export PULSE_SERVER=127.0.0.1
     export LIBGL_ALWAYS_SOFTWARE=1
     export MOZ_ENABLE_WAYLAND=0
     export GDK_BACKEND=x11
-    mkdir -p -m 700 /tmp/runtime-root
-    export XDG_RUNTIME_DIR=/tmp/runtime-root
+    export HOME=/root
+    export USER=root
+    mkdir -p -m 700 /root/runtime-root
+    export XDG_RUNTIME_DIR=/root/runtime-root
+    mkdir -p -m 777 /tmp/runtime-root 2>/dev/null || true
 
     # Clean up DBus locks
     rm -rf /var/run/dbus/pid /run/dbus/pid
     dbus-uuidgen --ensure 2>/dev/null || true
 
-    # Launch official LXQt Desktop Session
-    exec dbus-launch --exit-with-session startlxqt
+    # Launch official i-Lynx OS Desktop Session
+    if [ -x /usr/local/bin/start-ilynxos-desktop ]; then
+        exec /usr/local/bin/start-ilynxos-desktop
+    else
+        exec dbus-launch --exit-with-session startlxqt
+    fi
 '

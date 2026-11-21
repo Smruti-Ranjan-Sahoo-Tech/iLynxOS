@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Orange Rounded Squircle Badge -->
+    <path
+        android:fillColor="#FF6B00"
+        android:pathData="M24,18 h60 a16,16 0 0 1 16,16 v44 a16,16 0 0 1 -16,16 h-60 a16,16 0 0 1 -16,-16 v-44 a16,16 0 0 1 16,-16 z" />
+
+    <!-- White Desktop Monitor Frame -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,28 h48 a6,6 0 0 1 6,6 v30 a6,6 0 0 1 -6,6 h-48 a6,6 0 0 1 -6,-6 v-30 a6,6 0 0 1 6,-6 z" />
+
+    <!-- Inner Screen Display Area in Warm Orange -->
+    <path
+        android:fillColor="#FF7A1A"
+        android:pathData="M33,31 h42 a3,3 0 0 1 3,3 v24 a3,3 0 0 1 -3,3 h-42 a3,3 0 0 1 -3,-3 v-24 a3,3 0 0 1 3,-3 z" />
+
+    <!-- White Terminal Prompt inside Desktop -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M39,37 L46,42 L39,47 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,46 h10 v2.5 h-10 z" />
+
+    <!-- White Monitor Stand and Base -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50,70 h8 v7 h-8 z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,77 h24 a2,2 0 0 1 2,2 v1 a2,2 0 0 1 -2,2 h-24 a2,2 0 0 1 -2,-2 v-1 a2,2 0 0 1 2,-2 z" />
+</vector>

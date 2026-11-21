@@ -6,6 +6,27 @@
 
 set -e
 
+PREFIX="${PREFIX:-/data/data/com.termux.ilynxos/files/usr}"
+export PREFIX
+export PATH="$PREFIX/bin:$PATH"
+
+# Compatibility functions for standalone Android environment (noexec /data)
+pkg() { true; }
+uname() {
+    if [ "$1" = "-m" ]; then
+        echo "aarch64"
+    else
+        /system/bin/uname "$@"
+    fi
+}
+proot-distro() {
+    if [ -f "$PREFIX/bin/proot-distro" ]; then
+        /system/bin/sh "$PREFIX/bin/proot-distro" "$@"
+    else
+        echo "iLynxOS (installed)"
+    fi
+}
+
 # Terminal Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -137,6 +158,8 @@ TARBALL_PATH=""
 
 CANDIDATES=(
     "$TARBALL_ARG"
+    "/sdcard/Download/iLynxOS-v1.02-arm64.tar.gz"
+    "/sdcard/Download/$DEFAULT_TAR"
     "$SCRIPT_DIR/$DEFAULT_TAR"
     "$HOME/backups/$DEFAULT_TAR"
     "$(pwd)/$DEFAULT_TAR"
@@ -176,11 +199,13 @@ if proot-distro list 2>/dev/null | grep -q "$CONTAINER_NAME"; then
     echo -e "${YELLOW}[!] Existing container '$CONTAINER_NAME' detected.${NC}"
     if [ "$FORCE_INSTALL" -eq 1 ]; then
         echo -e "${CYAN}[*] Force flag enabled: removing existing container...${NC}"
+        chmod -R 777 "$PREFIX/../containers/$CONTAINER_NAME" 2>/dev/null || true
         proot-distro remove "$CONTAINER_NAME"
     else
         read -rp "Do you want to overwrite and reinstall '$CONTAINER_NAME'? (y/N): " CONFIRM_REINSTALL
         if [[ "$CONFIRM_REINSTALL" =~ ^[Yy]$ ]]; then
             echo -e "${CYAN}[*] Removing existing '$CONTAINER_NAME' container...${NC}"
+            chmod -R 777 "$PREFIX/../containers/$CONTAINER_NAME" 2>/dev/null || true
             proot-distro remove "$CONTAINER_NAME"
         else
             echo -e "${RED}[*] Installation cancelled by user.${NC}"

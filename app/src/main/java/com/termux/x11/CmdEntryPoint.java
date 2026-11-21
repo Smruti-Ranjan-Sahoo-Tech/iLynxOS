@@ -1,0 +1,171 @@
+package com.termux.x11;
+
+import com.termux.ilynxos.BuildConfig;
+
+import static android.system.Os.getuid;
+
+import android.annotation.SuppressLint;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Binder;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.os.ParcelFileDescriptor;
+import android.os.RemoteException;
+import android.util.Log;
+import android.view.Surface;
+
+import androidx.annotation.Keep;
+
+import dalvik.annotation.optimization.CriticalNative;
+
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.net.URL;
+
+@Keep @SuppressLint({"StaticFieldLeak", "UnsafeDynamicallyLoadedCode"})
+public class CmdEntryPoint extends ICmdEntryInterface.Stub {
+    public static final String ACTION_START = "com.termux.x11.CmdEntryPoint.ACTION_START";
+    public static final String EXTRA_DOCUMENT_TAG = "document_tag";
+    static final Handler handler;
+    public static Context ctx;
+    private final Intent intent = createIntent();
+    private boolean broadcastPending;
+
+    /**
+     * Command-line entry point.
+     *
+     * @param args The command-line arguments
+     */
+    public static void main(String[] args) {
+        initEntryPoint();
+        android.util.Log.i("CmdEntryPoint", "commit " + BuildConfig.COMMIT);
+        handler.post(() -> new CmdEntryPoint(args));
+        Looper.loop();
+    }
+
+    public static volatile CmdEntryPoint instance;
+
+    public CmdEntryPoint(String[] args) {
+        instance = this;
+        if (ctx == null) {
+            ctx = createContext();
+        }
+        Log.i("CmdEntryPoint", "Starting embedded X11 server with args: " + java.util.Arrays.toString(args));
+        if (!start(args)) {
+            Log.e("CmdEntryPoint", "start(args) failed or returned false");
+        } else {
+            Log.i("CmdEntryPoint", "Embedded X11 server initialized successfully");
+        }
+    }
+
+    // Called from native once OsVendorInit() resolves the "-tag" argument, if any.
+    void setDocumentTag(String tag) {
+        if (tag != null)
+            intent.putExtra(EXTRA_DOCUMENT_TAG, tag);
+    }
+
+    @SuppressLint({"WrongConstant", "PrivateApi"})
+    private Intent createIntent() {
+        // We should not care about multiple instances, it should be called only by `Termux:X11` app
+        // which is single instance...
+        Bundle bundle = new Bundle();
+        bundle.putBinder(null, this);
+
+        Intent intent = new Intent(ACTION_START);
+        intent.putExtra(null, bundle);
+        intent.setPackage(BuildConfig.APPLICATION_ID);
+
+        if (getuid() == 0 || getuid() == 2000)
+            intent.setFlags(0x00400000 /* FLAG_RECEIVER_FROM_SHELL */);
+
+        return intent;
+    }
+
+    private void sendBroadcast() {
+        // Called from native (the X server thread) on every knock on the port; coalesce
+        // bursts into a single broadcast fired 250ms later.
+        synchronized (this) {
+            if (broadcastPending)
+                return;
+            broadcastPending = true;
+        }
+        handler.postDelayed(() -> {
+            synchronized (this) { broadcastPending = false; }
+            sendBroadcast(intent);
+        }, 250);
+    }
+
+    static void sendBroadcast(Intent intent) {
+        if (ctx != null) {
+            try {
+                ctx.sendBroadcast(intent);
+            } catch (Exception e) {
+                Log.e("Broadcast", "Failed to broadcast intent through Context:", e);
+            }
+        }
+    }
+
+    // In some cases Android Activity part can not connect opened port.
+    // In this case opened port works like a lock file.
+    private void sendBroadcastDelayed() {
+        if (!connected())
+            sendBroadcast(intent);
+
+        handler.postDelayed(this::sendBroadcastDelayed, 1000);
+    }
+
+    public static Context createContext() {
+        if (ctx != null)
+            return ctx;
+        try {
+            Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
+            Object thread = activityThreadClass.getMethod("currentActivityThread").invoke(null);
+            if (thread != null) {
+                Context app = (Context) activityThreadClass.getMethod("getApplication").invoke(thread);
+                if (app != null) return app;
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    public native boolean start(String[] args);
+    public native void windowChanged(Surface surface);
+    public native void cursorWindowChanged(Surface surface);
+    public native ParcelFileDescriptor getXConnection();
+    public native ParcelFileDescriptor getLogcatOutput();
+    public native void reportFatalError(String message);
+    @CriticalNative private static native boolean connected();
+
+    static {
+        try {
+            if (Looper.getMainLooper() == null)
+                Looper.prepareMainLooper();
+        } catch (Exception e) {
+            Log.e("CmdEntryPoint", "Something went wrong when preparing MainLooper", e);
+        }
+        handler = new Handler(Looper.getMainLooper());
+    }
+
+    private static void initEntryPoint() {
+        ctx = createContext();
+
+        String path = "lib/" + (android.os.Process.is64Bit() ? Build.SUPPORTED_64_BIT_ABIS[0] : Build.SUPPORTED_32_BIT_ABIS[0]) + "/libXlorie.so";
+        ClassLoader loader = CmdEntryPoint.class.getClassLoader();
+        URL res = loader != null ? loader.getResource(path) : null;
+        String libPath = res != null ? res.getFile().replace("file:", "") : null;
+        if (libPath != null) {
+            try {
+                System.load(libPath);
+            } catch (Exception e) {
+                Log.e("CmdEntryPoint", "Failed to dlopen " + libPath, e);
+                System.err.println("Failed to load native library. Did you install the right apk? Try the universal one.");
+                System.exit(134);
+            }
+        }
+    }
+}
