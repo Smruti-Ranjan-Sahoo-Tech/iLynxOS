@@ -5,8 +5,19 @@
 
 <div align="center">
 
+[![GitHub Stars](https://img.shields.io/github/stars/Smruti-Ranjan-Sahoo-Tech/iLynxOS?style=for-the-badge&logo=github&color=FF6B00)](https://github.com/Smruti-Ranjan-Sahoo-Tech/iLynxOS/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/Smruti-Ranjan-Sahoo-Tech/iLynxOS?style=for-the-badge&logo=github&color=4A5568)](https://github.com/Smruti-Ranjan-Sahoo-Tech/iLynxOS/network/members)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-3182CE?style=for-the-badge&logo=gnu)](LICENSE)
+[![Platform: Android 8.0+](https://img.shields.io/badge/Platform-Android_8.0+-38A169?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Smruti-Ranjan-Sahoo-Tech/iLynxOS)
+[![Ubuntu 24.04 LTS](https://img.shields.io/badge/Ubuntu-24.04_LTS_Noble-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com)
+[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=for-the-badge)](CONTRIBUTING.md)
+
 [![Download APK](https://img.shields.io/badge/Download-iLynxOS_APK_(v1.03)-FF6B00?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Smruti-Ranjan-Sahoo-Tech/iLynxOS/raw/main/iLynxOS-v1.03-NobleModern.apk)
 [![Download Rootfs](https://img.shields.io/badge/Download-iLynx.tar.gz_(Google_Drive)-4285F4?style=for-the-badge&logo=google-drive&logoColor=white)](https://drive.google.com/drive/folders/1NccoZ5Rzscwexz7wHoOnbkjgeeWpkwaf)
+
+<br/>
+
+> 🌟 **Star this repository to help iLynxOS empower more users worldwide and rank #1 in mobile open-source computing!**
 
 </div>
 
@@ -19,6 +30,19 @@
 | **📱 iLynxOS Android APK** | [**Download iLynxOS-v1.03-NobleModern.apk**](https://github.com/Smruti-Ranjan-Sahoo-Tech/iLynxOS/raw/main/iLynxOS-v1.03-NobleModern.apk) • [Local File Link](file:///media/smruti/bb847b45-9fb8-4899-b51d-779c6768f27f1/mobile-dev-os/smartphone-movile-os/iLynxOS/iLynxOS-v1.03-NobleModern.apk) | **~28 MB** • Noble Modern Edition standalone APK |
 | **📦 Rootfs Archive (iLynx.tar.gz)** | [**Download iLynx.tar.gz (Google Drive)**](https://drive.google.com/drive/folders/1NccoZ5Rzscwexz7wHoOnbkjgeeWpkwaf) | **~1.4 GB** • Official Ubuntu 24.04 LTS LXQt filesystem |
 | **📖 Complete Guide & Architecture** | [**start.md**](file:///media/smruti/bb847b45-9fb8-4899-b51d-779c6768f27f1/mobile-dev-os/smartphone-movile-os/iLynxOS/start.md) | Full technical, architecture & customization manual |
+
+---
+
+### ⚡ 1-Minute Quick Start
+
+1. **📲 Install the Standalone APK:**  
+   Download and install [iLynxOS-v1.03-NobleModern.apk](https://github.com/Smruti-Ranjan-Sahoo-Tech/iLynxOS/raw/main/iLynxOS-v1.03-NobleModern.apk) on any Android 8.0+ device (ARM64 recommended).
+
+2. **📦 Get the Ubuntu 24.04 LTS Rootfs:**  
+   Download [iLynx.tar.gz](https://drive.google.com/drive/folders/1NccoZ5Rzscwexz7wHoOnbkjgeeWpkwaf) from Google Drive and keep it in your phone's `Download/` folder.
+
+3. **🚀 Launch Your Desktop Workstation:**  
+   Open **iLynxOS**, tap **Start Desktop Session**, and enjoy a full-fledged Ubuntu Linux PC right on your smartphone or cast wirelessly to any TV or browser!
 
 ---
 
@@ -49,6 +73,27 @@ The ultimate purpose of iLynxOS is not to replace smartphones or laptops. **It i
 * **🔓 Championing Software Freedom & Sovereignty:** Users deserve complete control and ownership over their computing environment rather than being confined to predefined, walled-garden mobile paradigms.
 * **🖥️ Unifying the Device Ecosystem:** Effortlessly bridge smartphones, tablets, external HDMI monitors, and Smart TVs into a continuous, flexible workspace through low-latency wireless desktop sharing (VNC & HTML5 Web).
 * **🎒 True Workspace Portability:** Your development stack, project files, configurations, and personal workflow travel with you everywhere—never bound to a single physical machine or desk.
+
+---
+
+## 🏆 Why iLynxOS is the #1 Mobile Linux Workstation
+
+*How does iLynxOS compare to other desktop solutions on Android?*
+
+| Feature / Capability | 🚀 **iLynxOS (Noble Modern)** | 🏢 **Samsung DeX** | 🐧 **Termux + Termux:X11** | 📦 **Andronix** | 📱 **UserLAnd** |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Device Compatibility** | **Any Android 8.0+ Phone** | Flagship Samsung Only | Any Android | Any Android | Any Android |
+| **Root Required?** | ❌ **100% Rootless** | ❌ No | ❌ No | ❌ No | ❌ No |
+| **Package Architecture** | **All-in-One Standalone APK** | Native Samsung OS | 3 Separate External Apps | Script Wrapper | Wrapper App |
+| **Display Server** | ⚡ **In-Process Native X11 (`libXlorie`)** | Proprietary Display Manager | External Termux:X11 App | External VNC Viewer | External VNC Viewer |
+| **Display Refresh Rate** | 🎮 **Native 60 / 90 / 120 Hz** | 60 Hz Cap | 60 Hz Cap | ~30 Hz (VNC lag) | ~30 Hz (VNC lag) |
+| **Guest OS Distribution** | 🐧 **Ubuntu 24.04 LTS (Noble)** | Android Desktop Windowing | Minimal Rootfs / Manual | Ubuntu / Debian / Kali | Debian / Ubuntu (Older) |
+| **Desktop Environment** | 💻 **Modern LXQt + Openbox** | Android UI Multi-window | Manual CLI Install | Various | Various |
+| **Wireless PC/TV Casting** | 📡 **VNC (`5901`) + HTML5 Web (`14500`)** | Miracast / Proprietary | Manual Setup | Manual Setup | Manual Setup |
+| **Zero-Install Web Access** | 🌐 **Built-in noVNC Web Desktop** | ❌ No | ❌ No | ❌ No | ❌ No |
+| **Touch & Mouse Ergonomics** | 🖱️ **Trackpad + Native Mouse D&D** | Mouse / Touch | Basic Touch | Emulated Touch | Emulated Touch |
+| **App Store Included** | 🛍️ **i-Lynx Store (94,000+ packages)** | Galaxy Store (Mobile) | None (CLI apt only) | None | None |
+| **License & Freedom** | 🔓 **100% Free & Open Source (GPLv3)** | 🔒 Proprietary Closed | 🔓 Open Source | ⚠️ Paid Tiers / Freemium | ⚠️ Partial Open Source |
 
 ---
 
@@ -352,7 +397,7 @@ sequenceDiagram
 | **Package Manager** | `apt` (Canonical Noble Repositories) | *Custom PPAs or pinned repositories* |
 | **Default Display ID** | `:0` (UNIX Domain Socket) | *In-process display target* |
 | **Audio Server** | PulseAudio over TCP (`127.0.0.1:4713`) | *Audio bridge configurations* |
-| **Remote VNC Port** | `5900` (RFB Protocol) | *Configured in VNC Mode settings* |
+| **Remote VNC Port** | `5901` (Dedicated :1) / `5900` (Mirror :0) | *Configured in VNC Mode settings* |
 | **Remote Web Port** | `14500` (HTML5 noVNC / WebSockets) | *Configured in Web Mode settings* |
 
 ### Adding Custom Software & Boot Hooks
@@ -370,6 +415,25 @@ apt install -y libreoffice gimp inkscape
 
 ---
 
+## 🤝 Community, Contributing & Open Source Governance
+
+iLynxOS is 100% free, copyleft open-source software built for the global community. We welcome developers, testers, designers, and documentation writers!
+
+- 💻 **Contributing**: Read our [CONTRIBUTING.md](CONTRIBUTING.md) to set up your Android Studio environment and submit pull requests.
+- 📜 **Code of Conduct**: Review our community standards in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+- 🛡️ **Security Policy**: Report security issues responsibly via [SECURITY.md](SECURITY.md).
+- 🐛 **Issue Tracker**: Submit bug reports and feature requests via [GitHub Issues](https://github.com/Smruti-Ranjan-Sahoo-Tech/iLynxOS/issues).
+
+---
+
+## 🏷️ Recommended GitHub Topics & SEO Tags
+To help iLynxOS rank #1 across GitHub search, add these exact topics in **Repository Settings ➔ General ➔ About**:
+```
+android, linux, linux-on-android, proot, ubuntu-noble, lxqt, desktop-environment, turn-phone-into-pc, smartphone-os, android-desktop, termux-alternative, samsung-dex-alternative, in-process-x11, novnc, vnc, workstation, kotlin, jetpack-compose, open-source
+```
+
+---
+
 ## 📖 Complete Technical & Setup Guide
 
 For the full technical manual—including step-by-step build instructions, Android Studio setup, phantom process tuning commands, terminal CLI reference, and license details—please refer to:
@@ -380,7 +444,7 @@ For the full technical manual—including step-by-step build instructions, Andro
 
 ## 📜 License & Acknowledgments
 
-- **iLynxOS Launcher & Android Architecture**: © 2026 Smruti Ranjan Sahoo (Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)).
+- **iLynxOS & Android Launcher**: © 2026 [Smruti Ranjan Sahoo](https://github.com/Smruti-Ranjan-Sahoo-Tech) (Licensed under the [GNU General Public License v3.0 (GPLv3)](LICENSE)).
 - **Embedded X11 Server**: Integrated from Termux:X11 / Lorie (GPL-3.0).
 - **Virtualization Engine**: PRoot Project (GPL-2.0+).
 - **Desktop Environment**: LXQt Team (LGPL-2.1+ / GPL-2.0+).

@@ -193,7 +193,7 @@ adb shell "setprop persist.sys.fflag.override.settings_enable_monitor_phantom_pr
 
 ## 📄 License & Attribution
 
-- **iLynxOS Launcher & UI**: Developed by Smruti Ranjan Sahoo (Apache License 2.0).
+- **iLynxOS Launcher & UI**: Developed by Smruti Ranjan Sahoo (Licensed under [GNU General Public License v3.0 (GPLv3)](LICENSE)).
 - **Embedded X11 Server**: Forked & integrated from Termux:X11 / Lorie (GPL-3.0).
 - **PRoot Sandbox**: PRoot Project (GPL-2.0+).
 - **Desktop Environment**: LXQt Team (LGPL-2.1+ / GPL-2.0+).

@@ -1,0 +1,54 @@
+name: 🐛 Bug Report
+description: Create a report to help us improve iLynxOS
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to report an issue in iLynxOS!
+  - type: input
+    id: device
+    attributes:
+      label: Device Model
+      description: e.g., Samsung Galaxy S23, Realme Narzo 50 Pro, Xiaomi 13
+      placeholder: Device model name
+    validations:
+      required: true
+  - type: input
+    id: android_version
+    attributes:
+      label: Android Version
+      description: e.g., Android 13, 14, or 15
+      placeholder: Android version
+    validations:
+      required: true
+  - type: input
+    id: app_version
+    attributes:
+      label: iLynxOS Version
+      description: e.g., v1.03 Noble Modern
+      placeholder: v1.03
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps explaining how to trigger the issue.
+      placeholder: |
+        1. Open iLynxOS
+        2. Tap on 'Start Desktop Session'
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs or Screenshots
+      description: Paste any logcat output or attach screenshots.
