@@ -355,10 +355,34 @@ class LinuxEnvironmentManager(private val context: Context) {
                 dbus-uuidgen --ensure 2>/dev/null || true
                 eval ${'$'}(dbus-launch --sh-syntax --exit-with-session) 2>/dev/null || true
 
+                # 3a. Bridge Android X11 abstract socket to standard PRoot /tmp/.X11-unix/X0 socket
+                mkdir -p /tmp/.X11-unix
+                chmod 1777 /tmp/.X11-unix 2>/dev/null || true
+                pkill -f "socat.*X0" 2>/dev/null || true
+                X0_ABSTRACT=${'$'}(grep -o '@.*\.X11-unix/X0' /proc/net/unix 2>/dev/null | head -n 1 | sed 's/^@//')
+                if [ -z "${'$'}X0_ABSTRACT" ]; then
+                    for cand in \
+                        "/data/user/0/com.termux.ilynxos/files/usr/tmp/.X11-unix/X0" \
+                        "/data/data/com.termux.ilynxos/files/usr/tmp/.X11-unix/X0" \
+                        "/data/data/com.termux/files/usr/tmp/.X11-unix/X0"; do
+                        if grep -q "@${'$'}cand" /proc/net/unix 2>/dev/null; then
+                            X0_ABSTRACT="${'$'}cand"
+                            break
+                        fi
+                    done
+                fi
+                if [ -n "${'$'}X0_ABSTRACT" ]; then
+                    rm -f /tmp/.X11-unix/X0
+                    if command -v socat >/dev/null 2>&1; then
+                        socat UNIX-LISTEN:/tmp/.X11-unix/X0,fork,mode=777 ABSTRACT-CONNECT:"${'$'}X0_ABSTRACT" >/dev/null 2>&1 &
+                        sleep 0.2
+                    fi
+                fi
+
                 # 3b. Actively wait for X11 display server to become ready before launching apps
                 echo "[iLynxOS] Waiting for X11 display ${'$'}DISPLAY to become ready..."
                 for i in $(seq 1 60); do
-                    if xsetroot -display "${'$'}DISPLAY" -solid "#1e1e2e" -cursor_name left_ptr 2>/dev/null; then
+                    if xsetroot -display "${'$'}DISPLAY" -cursor_name left_ptr 2>/dev/null; then
                         break
                     fi
                     sleep 0.1
@@ -431,10 +455,10 @@ WPEOF
                 # Ensure settings.conf enables wallpaper and SingleClick
                 for dir in /root/.config/pcmanfm-qt/lxqt /root/.config/pcmanfm-qt/vnc /root/.config/pcmanfm-qt/default; do
                     if [ -f "${'$'}dir/settings.conf" ]; then
-                        sed -i "s|Wallpaper=.*|Wallpaper=${'$'}WALLPAPER|g" "${'$'}dir/settings.conf" 2>/dev/null || true
-                        sed -i "s|WallpaperMode=.*|WallpaperMode=zoom|g" "${'$'}dir/settings.conf" 2>/dev/null || true
-                        sed -i "s|PerScreenWallpaper=true|PerScreenWallpaper=false|g" "${'$'}dir/settings.conf" 2>/dev/null || true
-                        sed -i "s|BgColor=.*|BgColor=#1e1e2e|g" "${'$'}dir/settings.conf" 2>/dev/null || true
+                        sed -i "s|^Wallpaper=.*|Wallpaper=${'$'}WALLPAPER|g" "${'$'}dir/settings.conf" 2>/dev/null || true
+                        sed -i "s|^WallpaperMode=.*|WallpaperMode=zoom|g" "${'$'}dir/settings.conf" 2>/dev/null || true
+                        sed -i "s|^PerScreenWallpaper=.*|PerScreenWallpaper=false|g" "${'$'}dir/settings.conf" 2>/dev/null || true
+                        sed -i "s|^BgColor=.*|BgColor=#1e1e2e|g" "${'$'}dir/settings.conf" 2>/dev/null || true
                         sed -i "s|SingleClick=false|SingleClick=true|g" "${'$'}dir/settings.conf" 2>/dev/null || true
                     fi
                 done
@@ -452,14 +476,16 @@ WPEOF
                         date +%Y-%m-%d-%H:%M:%S.%3N >> "${'$'}cache_dir/wallpaper.cache.info" 2>/dev/null || true
                     done
 
-                    # Apply wallpaper immediately to root window
-                    if command -v display >/dev/null 2>&1; then
-                        display -window root -backdrop "${'$'}WALLPAPER" >/dev/null 2>&1 &
-                    elif command -v feh >/dev/null 2>&1; then
+                    # Apply wallpaper immediately to root window via feh
+                    if command -v feh >/dev/null 2>&1; then
                         feh --bg-fill "${'$'}WALLPAPER" 2>/dev/null || true
+                    elif command -v display >/dev/null 2>&1; then
+                        display -window root -backdrop "${'$'}WALLPAPER" >/dev/null 2>&1 &
                     fi
+                else
+                    xsetroot -cursor_name left_ptr -solid "#1e1e2e" 2>/dev/null || true
                 fi
-                xsetroot -cursor_name left_ptr -solid "#1e1e2e" 2>/dev/null || true
+                xsetroot -cursor_name left_ptr 2>/dev/null || true
 
                 # 5. Launch Openbox Window Manager
                 if command -v openbox >/dev/null 2>&1; then
@@ -667,11 +693,10 @@ WPEOF
                     if (settingsFile.exists()) {
                         var content = settingsFile.readText()
                         content = content.replace("SingleClick=false", "SingleClick=true")
-                        content = content.replace("Wallpaper=", "Wallpaper=/usr/share/backgrounds/windows-11-bloom-dark.jpg")
-                        content = content.replace("WallpaperMode=none", "WallpaperMode=zoom")
-                        content = content.replace("WallpaperMode=crop", "WallpaperMode=zoom")
-                        content = content.replace("PerScreenWallpaper=true", "PerScreenWallpaper=false")
-                        content = content.replace("BgColor=#000000", "BgColor=#1e1e2e")
+                        content = content.replace(Regex("(?m)^Wallpaper=.*"), "Wallpaper=/usr/share/backgrounds/windows-11-bloom-dark.jpg")
+                        content = content.replace(Regex("(?m)^WallpaperMode=.*"), "WallpaperMode=zoom")
+                        content = content.replace(Regex("(?m)^PerScreenWallpaper=.*"), "PerScreenWallpaper=false")
+                        content = content.replace(Regex("(?m)^BgColor=.*"), "BgColor=#1e1e2e")
                         settingsFile.writeText(content)
                     }
                 }
@@ -804,6 +829,44 @@ WPEOF
             writeExecutableScript(File(localBin, "wireless-install"), """
                 #!/bin/bash
                 exec /usr/local/share/ilynxos/wireless-desktop/install.sh "${'$'}@"
+            """.trimIndent())
+
+            writeExecutableScript(File(localBin, "set-wallpaper"), """
+                #!/bin/bash
+                RAW_IMAGE="${'$'}1"
+                MODE="${'$'}{2:-zoom}"
+                [ -z "${'$'}RAW_IMAGE" ] && exit 1
+                IMAGE=${'$'}(readlink -f "${'$'}RAW_IMAGE" 2>/dev/null || realpath "${'$'}RAW_IMAGE" 2>/dev/null || echo "${'$'}RAW_IMAGE")
+                [ ! -f "${'$'}IMAGE" ] && exit 1
+
+                export DISPLAY="${'$'}{DISPLAY:-:0}"
+                export XDG_RUNTIME_DIR="${'$'}{XDG_RUNTIME_DIR:-/tmp/runtime-root}"
+
+                for conf in /root/.config/pcmanfm-qt/lxqt/settings.conf /root/.config/pcmanfm-qt/default/settings.conf /root/.config/pcmanfm-qt/vnc/settings.conf; do
+                    if [ -f "${'$'}conf" ]; then
+                        sed -i "s|^Wallpaper=.*|Wallpaper=${'$'}IMAGE|" "${'$'}conf" 2>/dev/null || true
+                        sed -i "s|^WallpaperMode=.*|WallpaperMode=${'$'}MODE|" "${'$'}conf" 2>/dev/null || true
+                    fi
+                done
+
+                for conf in /root/.config/pcmanfm-qt/default/desktop-items-*.conf /root/.config/pcmanfm-qt/lxqt/desktop-items-*.conf /root/.config/pcmanfm-qt/vnc/desktop-items-*.conf; do
+                    if [ -f "${'$'}conf" ]; then
+                        sed -i "s|^wallpaper=.*|wallpaper=${'$'}IMAGE|" "${'$'}conf" 2>/dev/null || true
+                    fi
+                done
+
+                if command -v feh >/dev/null 2>&1; then
+                    feh --bg-fill "${'$'}IMAGE" 2>/dev/null || true
+                fi
+
+                pcmanfm-qt --profile=lxqt -w "${'$'}IMAGE" --wallpaper-mode "${'$'}MODE" 2>/dev/null || true
+                pcmanfm-qt -w "${'$'}IMAGE" --wallpaper-mode "${'$'}MODE" 2>/dev/null || true
+
+                if command -v xfconf-query >/dev/null 2>&1; then
+                    for prop in ${'$'}(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep -E "last-image|image-path"); do
+                        xfconf-query -c xfce4-desktop -p "${'$'}prop" -s "${'$'}IMAGE" 2>/dev/null || true
+                    done
+                fi
             """.trimIndent())
 
             // Create user home scripts in /root
@@ -1244,7 +1307,19 @@ WPEOF
 
     private fun writeExecutableScript(file: File, content: String) {
         try {
-            FileOutputStream(file).use { it.write(content.toByteArray()) }
+            val lines = content.lines().dropWhile { it.isBlank() }
+            val firstNonBlank = lines.firstOrNull { it.isNotBlank() } ?: ""
+            val indentToStrip = firstNonBlank.takeWhile { it == ' ' }.length
+            val cleanContent = lines.joinToString("\n") { line ->
+                if (indentToStrip > 0 && line.startsWith(" ".repeat(indentToStrip))) {
+                    line.substring(indentToStrip)
+                } else if (line.trimStart().startsWith("#!")) {
+                    line.trimStart()
+                } else {
+                    line
+                }
+            }
+            FileOutputStream(file).use { it.write(cleanContent.toByteArray()) }
             file.setExecutable(true, false)
             file.setReadable(true, false)
         } catch (e: Exception) {

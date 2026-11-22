@@ -151,8 +151,8 @@ class VncServerManager(private val context: Context) {
 
         // 4. Poll for socket availability
         var socketOpen = false
-        for (i in 1..40) {
-            kotlinx.coroutines.delay(200)
+        for (i in 1..60) {
+            kotlinx.coroutines.delay(250)
             if (checkSocketListening(effectivePort)) {
                 Log.i(TAG, "VNC server detected listening on port $effectivePort (attempt $i)")
                 socketOpen = true

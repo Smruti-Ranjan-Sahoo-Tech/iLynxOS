@@ -140,8 +140,8 @@ class PRootRuntimeEngine(private val context: Context) {
                     mkdir -p -m 777 /tmp/runtime-root 2>/dev/null || true
                     rm -rf /var/run/dbus/pid /run/dbus/pid
                     dbus-uuidgen --ensure 2>/dev/null || true
-                    if [ -x /usr/local/bin/start-ilynxos-desktop ]; then
-                        exec /usr/local/bin/start-ilynxos-desktop
+                    if [ -f /usr/local/bin/start-ilynxos-desktop ]; then
+                        exec /bin/bash /usr/local/bin/start-ilynxos-desktop
                     else
                         exec dbus-launch --exit-with-session startlxqt
                     fi

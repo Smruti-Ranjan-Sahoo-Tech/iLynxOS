@@ -217,14 +217,16 @@ CONFEOF
             date +%Y-%m-%d-%H:%M:%S.%3N >> "$cache_dir/wallpaper.cache.info" 2>/dev/null || true
         done
 
-        # Render wallpaper to root window
-        if command -v display >/dev/null 2>&1; then
-            display -window root -backdrop "$WALLPAPER" >/dev/null 2>&1 &
-        elif command -v feh >/dev/null 2>&1; then
-            feh --bg-fill "$WALLPAPER" >/dev/null 2>&1 || true
-        fi
+    # Render wallpaper to root window via feh
+    if command -v feh >/dev/null 2>&1; then
+        feh --bg-fill "$WALLPAPER" >/dev/null 2>&1 || true
+    elif command -v display >/dev/null 2>&1; then
+        display -window root -backdrop "$WALLPAPER" >/dev/null 2>&1 &
     fi
+else
     xsetroot -cursor_name left_ptr -solid "#1e1e2e" 2>/dev/null || true
+fi
+xsetroot -cursor_name left_ptr 2>/dev/null || true
 
     chmod +x /root/Desktop/*.desktop 2>/dev/null || true
 
@@ -343,13 +345,16 @@ if [ -n "$WALLPAPER" ] && [ -f "$WALLPAPER" ]; then
         date +%Y-%m-%d-%H:%M:%S.%3N >> "$cache_dir/wallpaper.cache.info" 2>/dev/null || true
     done
 
-    if command -v display >/dev/null 2>&1; then
-        display -window root -backdrop "$WALLPAPER" >/dev/null 2>&1 &
-    elif command -v feh >/dev/null 2>&1; then
+    # Render wallpaper to root window via feh
+    if command -v feh >/dev/null 2>&1; then
         feh --bg-fill "$WALLPAPER" >/dev/null 2>&1 || true
+    elif command -v display >/dev/null 2>&1; then
+        display -window root -backdrop "$WALLPAPER" >/dev/null 2>&1 &
     fi
+else
+    xsetroot -cursor_name left_ptr -solid "#1e1e2e" 2>/dev/null || true
 fi
-xsetroot -cursor_name left_ptr -solid "#1e1e2e" 2>/dev/null || true
+xsetroot -cursor_name left_ptr 2>/dev/null || true
 
 chmod +x /root/Desktop/*.desktop 2>/dev/null || true
 

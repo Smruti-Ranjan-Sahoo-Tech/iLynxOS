@@ -156,8 +156,8 @@ class WebDesktopManager(private val context: Context) {
 
         // Poll for socket availability
         var socketOpen = false
-        for (i in 1..40) {
-            kotlinx.coroutines.delay(200)
+        for (i in 1..60) {
+            kotlinx.coroutines.delay(250)
             if (checkSocketListening(port)) {
                 Log.i(TAG, "Web Mode detected listening on port $port (attempt $i)")
                 socketOpen = true
