@@ -60,6 +60,7 @@ import com.termux.ilynxos.ui.components.WarmBackgroundScaffold
 import com.termux.ilynxos.ui.theme.CardBorder
 import com.termux.ilynxos.ui.theme.CardSurface
 import com.termux.ilynxos.ui.theme.CrimsonRed
+import com.termux.ilynxos.ui.theme.EmeraldGreen
 import com.termux.ilynxos.ui.theme.OrangeAccentBg
 import com.termux.ilynxos.ui.theme.OrangePrimary
 import com.termux.ilynxos.ui.theme.SquircleAboutBg
@@ -78,7 +79,7 @@ import com.termux.ilynxos.ui.theme.TextDarkSecondary
 @Composable
 fun HomeScreen(
     onOpenDesktop: () -> Unit,
-    onOpenWireless: () -> Unit,
+    onOpenVnc: () -> Unit,
     onOpenTerminal: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAbout: () -> Unit
@@ -87,10 +88,13 @@ fun HomeScreen(
     val envManager = remember { LinuxEnvironmentManager.getInstance(context) }
     val runtimeEngine = remember { PRootRuntimeEngine.getInstance(context) }
     val sessionState by runtimeEngine.sessionState.collectAsState()
+    val vncManager = remember { com.termux.ilynxos.vnc.VncServerManager.getInstance(context) }
+    val vncState by vncManager.state.collectAsState()
     val scrollState = rememberScrollState()
 
     val isRunning = sessionState is SessionState.Running
     val isStarting = sessionState is SessionState.Starting
+    val isVncRunning = vncState.status == com.termux.ilynxos.vnc.VncStatus.RUNNING
 
     WarmBackgroundScaffold(showWave = true) {
         Column(
@@ -314,9 +318,9 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Wireless Desktop Quick Access Card
+            // VNC Remote Desktop Quick Access Card
             Card(
-                onClick = onOpenWireless,
+                onClick = onOpenVnc,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = CardSurface),
@@ -336,13 +340,16 @@ fun HomeScreen(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .background(OrangeAccentBg, RoundedCornerShape(12.dp)),
+                                .background(
+                                    if (isVncRunning) EmeraldGreen.copy(alpha = 0.15f) else OrangeAccentBg,
+                                    RoundedCornerShape(12.dp)
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                Icons.Default.CastConnected,
-                                contentDescription = "Wireless Desktop",
-                                tint = OrangePrimary,
+                                Icons.Default.Computer,
+                                contentDescription = "VNC Remote Desktop",
+                                tint = if (isVncRunning) EmeraldGreen else OrangePrimary,
                                 modifier = Modifier.size(21.dp)
                             )
                         }
@@ -350,18 +357,28 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.width(12.dp))
 
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Wireless Desktop",
-                                color = TextDarkPrimary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "VNC Remote Desktop",
+                                    color = TextDarkPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (isVncRunning) {
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .background(EmeraldGreen, CircleShape)
+                                    )
+                                }
+                            }
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "VNC & HTML5 Web remote control",
-                                color = TextDarkSecondary,
+                                text = if (isVncRunning) "Live on port ${vncState.port} (: ${vncState.display})" else "Connect via TigerVNC, RealVNC, Remmina",
+                                color = if (isVncRunning) EmeraldGreen else TextDarkSecondary,
                                 fontSize = 12.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis

@@ -7,7 +7,7 @@ sealed class Screen(val title: String) {
     object Home : Screen("Home")
     object Desktop : Screen("Desktop")
     object Terminal : Screen("Terminal")
-    object Wireless : Screen("Wireless Desktop")
+    object Vnc : Screen("VNC Desktop")
     object Settings : Screen("Settings")
     object About : Screen("About")
 }

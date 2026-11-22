@@ -175,7 +175,7 @@ The **iLynxOS Warm Modern Fluent UI** provides a unified control center for mana
 
 - **Top Application Header**: Clean typography with dynamic notch and status bar inset padding (`Modifier.statusBarsPadding()`) that prevents camera cutout overlap.
 - **Desktop Session Card**: Shows real-time session state (`RUNNING (:0)`, `STARTING`, or `STOPPED`) with direct **Open Desktop** and **Stop** action controls.
-- **Wireless Desktop Banner**: One-tap access to RFB/VNC and HTML5 Web remote control streaming.
+- **VNC Remote Desktop Banner**: One-tap access to RFB/TigerVNC remote control streaming.
 - **Quick Navigation Hub**: High-contrast squircles for fast access to the **PRoot Root Shell**, **Display & Input Settings**, and **System Information**.
 
 ---
@@ -204,10 +204,9 @@ flowchart TD
         I["Virtual Display Server (Xvfb - Display :1)"]
     end
 
-    subgraph Wireless["Wireless Desktop Subsystem"]
-        J["RFB VNC Engine (x11vnc on :5901)"]
-        K["HTML5 WebSocket Bridge (WebSockify on :14500)"]
-        L["noVNC Browser Client (Canvas / WebSockets)"]
+    subgraph VNC["Remote VNC Subsystem"]
+        J["TigerVNC Server (Xvnc / vncserver on :5901)"]
+        K["PC / Tablet VNC Viewers (TigerVNC / RealVNC / Remmina)"]
     end
 
     B --> C --> D --> E --> F
@@ -215,7 +214,7 @@ flowchart TD
     F --> H
     F --> I
     I --> J
-    J --> K --> L
+    J --> K
 ```
 
 ### 1. Android Host & Runtime Engine
@@ -224,14 +223,14 @@ flowchart TD
 
 ### 2. Display Systems (Display `:0` vs Display `:1`)
 - **Display `:0` (On-Device Screen):** Managed via an embedded, high-performance X11 server library (`libXlorie`) communicating directly with Android `SurfaceView` through shared memory.
-- **Display `:1` (Dedicated Wireless Virtual Session):** Emulated through a headless `Xvfb` (X Virtual Framebuffer) running at 24-bit truecolor (`1280x720` up to `1920x1080`). This guarantees that remote wireless sessions run independently without interfering with phone touch interactions on `:0`.
+- **Display `:1` (Dedicated Virtual Session):** Emulated through a headless TigerVNC server / `Xvfb` running at 24-bit truecolor (`1280x720` up to `1920x1080`). This guarantees that remote VNC sessions run independently without interfering with phone touch interactions on `:0`.
 
 ### 3. D-Bus Isolation & Desktop Management
 - Multi-display desktop environments require separate session buses. iLynxOS decouples D-Bus session addresses (`dbus-launch --sh-syntax --exit-with-session`) when launching the virtual display, allowing `pcmanfm-qt` to manage wallpaper rendering and `/root/Desktop` shortcuts concurrently on Display `:1` without single-instance collision against Display `:0`.
 
-### 4. Wireless Desktop Subsystem
-- **x11vnc RFB Engine:** Hooks directly into the Xvfb framebuffer, configured with `-cursor arrow` and `-always_inject` to guarantee pixel-accurate mouse cursor synchronization and zero-displacement click detection for PC VNC viewers.
-- **WebSockify + noVNC:** Converts raw RFB TCP streams into RFC 6455 WebSockets, serving a zero-install HTML5 client accessible directly through Chrome, Edge, Safari, or Firefox on any PC, tablet, or Smart TV.
+### 4. VNC Remote Subsystem
+- **TigerVNC / Xvnc Engine:** Managed via `vncstart` and `vncstop`, supporting custom resolutions, dynamic port assignment, wake locks, and reliable socket detection.
+- **PC & Tablet VNC Viewers:** Fully compatible with TigerVNC Viewer, RealVNC, Remmina, and Android AVNC.
 
 ---
 
@@ -245,11 +244,11 @@ Security is prioritized across all layers of iLynxOS:
 - **Encrypted Web Mode:** Native support for TLS encryption via OpenSSL self-signed certificate generation (`/root/.ilynxos/ssl/web.pem`), preventing plain-text packet inspection over shared Wi-Fi networks.
 
 ### 2. Network Interface Binding
-- Remote desktop ports (`5901` for VNC and `14500` for Web) require intentional activation from the **Wireless Desktop** control panel.
-- Terminating the session via the UI or `vncstop` / `webstop` immediately terminates listeners (`websockify`, `x11vnc`, and `Xvfb`) and removes socket locks.
+- Remote desktop port (`5901` for virtual session, `5900` for mirror) requires intentional activation from the **VNC Remote Desktop** control panel.
+- Terminating the session via the UI or `vncstop` immediately terminates listeners (`Xvnc` / `x11vnc`) and removes socket locks.
 
 ### 3. Process Concurrency & Lock Protection
-- Startup scripts utilize file-descriptor locks (`flock`) on `/tmp/start-vnc-*.lock` and `/tmp/start-web.lock` to prevent race conditions or duplicate process spawns from killing active sessions.
+- Startup scripts utilize lock files (`/tmp/start-vnc-*.lock` and socket verification) to prevent race conditions or duplicate process spawns from killing active sessions.
 
 ---
 
@@ -293,36 +292,26 @@ sha256sum iLynx.tar.gz
 
 ---
 
-## 🌐 Wireless Desktop: Remote Connection Guide
+## 🌐 VNC Remote Desktop: Connection Guide
 
-iLynxOS allows you to cast or access your Linux desktop from any PC, laptop, tablet, or Smart TV connected to the same Wi-Fi network.
+iLynxOS allows you to cast and control your Linux desktop from any PC, laptop, or tablet connected to the same Wi-Fi network using high-performance RFB/VNC protocols.
 
-### Mode 1: Zero-Install HTML5 Browser Mode
-No software installation required on the client device.
-
-1. Open **iLynxOS** on your phone -> Navigate to **Wireless Desktop**.
-2. Verify your Phone LAN IP (e.g., `192.168.1.105`).
-3. Toggle **Dedicated Virtual Desktop (:1)** and tap **Start Web**.
-4. On your PC, laptop, or tablet browser, open:
-   ```text
-   http://<PHONE_IP>:14500/vnc.html?autoconnect=true&resize=scale&password=raja1234
-   ```
-5. A full desktop session appears in your browser tab with full keyboard, mouse, and clipboard support.
-
-### Mode 2: High-Performance VNC Client Mode
+### High-Performance VNC Client Mode
 Recommended for latency-critical tasks and daily PC workstation use.
 
-1. In **Wireless Desktop**, tap **Start VNC** (Port `5901`, Display `:1`).
-2. On your PC, open a standard VNC viewer:
+1. Open **iLynxOS** on your phone -> Navigate to **VNC Remote Desktop**.
+2. Tap **Start VNC** (Port `5901`, Display `:1` for virtual session, or `5900` for mirror).
+3. On your PC, open any standard VNC viewer:
    - **TigerVNC:** `vncviewer <PHONE_IP>:5901`
    - **RealVNC Viewer:** Connect to `<PHONE_IP>:5901`
    - **Remmina (Linux):** Connect via VNC to `<PHONE_IP>:5901`
-3. Enter password: `raja1234` (or your configured custom password).
-4. **Features in VNC Mode:**
-   - Dedicated 24-bit virtual canvas.
-   - PC mouse cursor rendered smoothly via hardware tracking (`-cursor arrow`).
-   - Click injection enabled for desktop icons, application menus, and window dragging (`-always_inject`).
-   - Desktop wallpaper and shortcuts loaded automatically.
+   - **AVNC (Android):** Connect to `<PHONE_IP>:5901`
+4. Enter password: `raja1234` (or your configured custom password).
+5. **Key VNC Features:**
+   - Dedicated 24-bit virtual canvas (`1280x720` up to `1920x1080`).
+   - PC mouse cursor rendered smoothly with hardware injection.
+   - Dual-mode support: Virtual Session (Display `:1`) or Mirror Session (Display `:0`).
+   - Managed automatically via robust `vncstart` and `vncstop` scripts.
 
 ---
 
@@ -391,9 +380,9 @@ webstop
 
 # If necessary, terminate all PRoot instances completely
 pkill -9 -f proot
+pkill -9 -f Xvnc
 pkill -9 -f x11vnc
 pkill -9 -f Xvfb
-pkill -9 -f websockify
 ```
 </details>
 
@@ -433,9 +422,8 @@ iLynxOS is an open-source project licensed under the **GNU General Public Licens
 | **Termux Core Components** | [termux/termux-app](https://github.com/termux/termux-app) | GPL-3.0 | Terminal emulation, process management shims, JNI bridges. |
 | **Ubuntu 24.04 LTS (Noble)** | [Canonical Ltd.](https://ubuntu.com) | Various OSI | Base userspace root filesystem and APT package repository. |
 | **LXQt & Openbox** | [LXQt Team](https://lxqt-project.org) / Dana Jansens | LGPL / GPL | Desktop environment, panel taskbar, and lightweight window manager. |
+| **TigerVNC** | [TigerVNC/tigervnc](https://github.com/TigerVNC/tigervnc) | GPL-2.0 | High-performance RFB VNC server engine (Xvnc / vncserver). |
 | **x11vnc** | Karl Runge / LibVNC | GPL-2.0 | Virtual display frame-capture and RFB input protocol engine. |
-| **noVNC** | [novnc/noVNC](https://github.com/novnc/noVNC) | MPL-2.0 | Browser-based HTML5 canvas client for remote desktop rendering. |
-| **websockify** | [novnc/websockify](https://github.com/novnc/websockify) | LGPL-3.0 | RFC 6455 WebSocket to raw TCP socket translation proxy. |
 
 ---
 

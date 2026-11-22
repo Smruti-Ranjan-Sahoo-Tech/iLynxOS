@@ -27,7 +27,7 @@ import com.termux.ilynxos.ui.screens.SettingsScreen
 import com.termux.ilynxos.ui.screens.SplashScreen
 import com.termux.ilynxos.ui.screens.TerminalScreen
 import com.termux.ilynxos.ui.screens.WelcomeScreen
-import com.termux.ilynxos.ui.wireless.WirelessDesktopScreen
+import com.termux.ilynxos.ui.vnc.VncDesktopScreen
 import com.termux.ilynxos.ui.theme.ILynxOSTheme
 import com.termux.ilynxos.ui.theme.Slate950
 
@@ -95,14 +95,14 @@ fun AppNavigation(envManager: LinuxEnvironmentManager) {
                     android.util.Log.i("AppNavigation", "Switching screen to Screen.Desktop")
                     currentScreen = Screen.Desktop
                 },
-                onOpenWireless = { currentScreen = Screen.Wireless },
+                onOpenVnc = { currentScreen = Screen.Vnc },
                 onOpenTerminal = { currentScreen = Screen.Terminal },
                 onOpenSettings = { currentScreen = Screen.Settings },
                 onOpenAbout = { currentScreen = Screen.About }
             )
         }
-        is Screen.Wireless -> {
-            WirelessDesktopScreen(
+        is Screen.Vnc -> {
+            VncDesktopScreen(
                 onNavigateBack = { currentScreen = Screen.Home }
             )
         }

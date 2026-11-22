@@ -160,9 +160,9 @@ class LinuxSessionService : Service() {
 
             scope.launch(Dispatchers.IO) {
                 try {
-                    com.termux.ilynxos.wireless.WirelessDesktopManager.getInstance(applicationContext).stopAll()
+                    com.termux.ilynxos.vnc.VncServerManager.getInstance(applicationContext).stop()
                 } catch (e: Exception) {
-                    Log.w(TAG, "Error stopping wireless desktop services: ${e.message}")
+                    Log.w(TAG, "Error stopping VNC server: ${e.message}")
                 }
             }
 

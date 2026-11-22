@@ -543,68 +543,37 @@ WPEOF
                     done
                 ) &
 
-                # 8b. Wireless Desktop Request Supervisor Loop (VNC & Web Mode)
+                # 8b. VNC Server Request Supervisor Loop
                 (
-                    rm -f /tmp/vnc.status /tmp/web.status
+                    rm -f /tmp/vnc.status
                     while true; do
                         if [ -f "/tmp/vnc_start.req" ]; then
                             VNC_PORT=${'$'}(head -n 1 /tmp/vnc_start.req 2>/dev/null || echo "5901")
                             VNC_PASS=${'$'}(sed -n '2p' /tmp/vnc_start.req 2>/dev/null || echo "raja1234")
                             VNC_DISP=${'$'}(sed -n '3p' /tmp/vnc_start.req 2>/dev/null || echo "1")
+                            VNC_RES=${'$'}(sed -n '4p' /tmp/vnc_start.req 2>/dev/null || echo "1280x720")
                             rm -f /tmp/vnc_start.req
-                            if [ -x "/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh" ]; then
-                                /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}VNC_PORT" "${'$'}VNC_PASS" "${'$'}VNC_DISP" 1280x720 &
+                            if [ -x "/usr/local/share/ilynxos/vnc/vncstart.sh" ]; then
+                                /usr/local/share/ilynxos/vnc/vncstart.sh "${'$'}VNC_PORT" "${'$'}VNC_PASS" "${'$'}VNC_DISP" "${'$'}VNC_RES" &
+                            elif [ -x "/usr/local/bin/vncstart" ]; then
+                                /usr/local/bin/vncstart "${'$'}VNC_PORT" "${'$'}VNC_PASS" "${'$'}VNC_DISP" "${'$'}VNC_RES" &
                             else
-                                command -v vncserver >/dev/null 2>&1 && vncserver ":${'$'}VNC_DISP" -geometry 1280x720 -depth 24 -ac 2>/dev/null || true
-                                pkill -9 -f "Xvnc :${'$'}VNC_DISP" 2>/dev/null || true
-                                sleep 0.2
-                                mkdir -p /root/.vnc
-                                if [ -n "${'$'}VNC_PASS" ]; then
-                                    printf "%s\n%s\nn\n" "${'$'}VNC_PASS" "${'$'}VNC_PASS" | vncpasswd >/dev/null 2>&1
-                                    chmod 600 /root/.vnc/passwd 2>/dev/null || true
-                                fi
+                                command -v vncserver >/dev/null 2>&1 && vncserver ":${'$'}VNC_DISP" -geometry "${'$'}VNC_RES" -depth 24 -ac 2>/dev/null || true
                             fi
                             echo "1" > /tmp/vnc.status
                         fi
 
                         if [ -f "/tmp/vnc_stop.req" ]; then
                             rm -f /tmp/vnc_stop.req
-                            if [ -x "/usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh" ]; then
-                                /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh &
+                            if [ -x "/usr/local/share/ilynxos/vnc/vncstop.sh" ]; then
+                                /usr/local/share/ilynxos/vnc/vncstop.sh &
+                            elif [ -x "/usr/local/bin/vncstop" ]; then
+                                /usr/local/bin/vncstop &
                             else
                                 command -v vncserver >/dev/null 2>&1 && vncserver -kill :1 2>/dev/null || true
-                                pkill -9 -f "Xvnc :1" 2>/dev/null || true
                                 pkill -9 -f "Xvnc" 2>/dev/null || true
                             fi
                             echo "0" > /tmp/vnc.status
-                        fi
-
-                        if [ -f "/tmp/web_start.req" ]; then
-                            WEB_PORT=${'$'}(head -n 1 /tmp/web_start.req 2>/dev/null || echo "14500")
-                            WEB_PASS=${'$'}(sed -n '2p' /tmp/web_start.req 2>/dev/null || echo "raja1234")
-                            USE_TLS=${'$'}(sed -n '3p' /tmp/web_start.req 2>/dev/null || echo "0")
-                            WEB_DISP=${'$'}(sed -n '4p' /tmp/web_start.req 2>/dev/null || echo "1")
-                            rm -f /tmp/web_start.req
-                            if [ -x "/usr/local/share/ilynxos/wireless-desktop/start-web.sh" ]; then
-                                /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}WEB_PORT" "${'$'}WEB_PASS" "${'$'}USE_TLS" "${'$'}WEB_DISP" 1280x720 &
-                            fi
-                            sleep 0.8
-                            if pgrep -f websockify >/dev/null 2>&1; then
-                                echo "1" > /tmp/web.status
-                            else
-                                echo "0" > /tmp/web.status
-                            fi
-                        fi
-
-                        if [ -f "/tmp/web_stop.req" ]; then
-                            rm -f /tmp/web_stop.req
-                            if [ -x "/usr/local/share/ilynxos/wireless-desktop/stop-web.sh" ]; then
-                                /usr/local/share/ilynxos/wireless-desktop/stop-web.sh &
-                            else
-                                pkill -9 -f websockify 2>/dev/null || true
-                                rm -f /var/run/websockify.pid
-                            fi
-                            echo "0" > /tmp/web.status
                         fi
 
                         sleep 1
@@ -734,62 +703,52 @@ WPEOF
                 Log.w(TAG, "Could not setup Openbox theme symlinks: ${e.message}")
             }
 
-            // 6. Unpack Wireless Desktop modules and command bridges
-            unpackWirelessDesktopScripts()
+            // 6. Unpack VNC Desktop modules and command bridges
+            unpackVncScripts()
         } catch (e: Exception) {
             Log.w(TAG, "Could not apply desktop config optimization: ${e.message}")
         }
     }
 
-    fun unpackWirelessDesktopScripts() {
+    fun unpackVncScripts() {
         try {
-            val wirelessDir = File(rootfsDir, "usr/local/share/ilynxos/wireless-desktop")
-            wirelessDir.mkdirs()
+            val vncDir = File(rootfsDir, "usr/local/share/ilynxos/vnc")
+            vncDir.mkdirs()
 
-            copyAssetFolder("wireless-desktop", wirelessDir)
+            copyAssetFolder("vnc", vncDir)
+
+            // Clean up obsolete wireless desktop directory if present
+            try {
+                File(rootfsDir, "usr/local/share/ilynxos/wireless-desktop").deleteRecursively()
+            } catch (_: Exception) {}
 
             // Create command shims in /usr/local/bin
             val localBin = File(rootfsDir, "usr/local/bin")
             localBin.mkdirs()
 
+            // Remove legacy web/wireless scripts from /usr/local/bin
+            listOf("start-web", "webstart", "stop-web", "webstop", "wireless-status", "wireless-install").forEach {
+                try { File(localBin, it).delete() } catch (_: Exception) {}
+            }
+
             writeExecutableScript(File(localBin, "start-vnc"), """
                 #!/bin/bash
-                exec bash /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}@"
+                exec bash /usr/local/share/ilynxos/vnc/vncstart.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(localBin, "vncstart"), """
                 #!/bin/bash
-                exec bash /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}@"
+                exec bash /usr/local/share/ilynxos/vnc/vncstart.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(localBin, "stop-vnc"), """
                 #!/bin/bash
-                exec bash /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh "${'$'}@"
+                exec bash /usr/local/share/ilynxos/vnc/vncstop.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(localBin, "vncstop"), """
                 #!/bin/bash
-                exec bash /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh "${'$'}@"
-            """.trimIndent())
-
-            writeExecutableScript(File(localBin, "start-web"), """
-                #!/bin/bash
-                exec bash /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}@"
-            """.trimIndent())
-
-            writeExecutableScript(File(localBin, "webstart"), """
-                #!/bin/bash
-                exec bash /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}@"
-            """.trimIndent())
-
-            writeExecutableScript(File(localBin, "stop-web"), """
-                #!/bin/bash
-                exec bash /usr/local/share/ilynxos/wireless-desktop/stop-web.sh "${'$'}@"
-            """.trimIndent())
-
-            writeExecutableScript(File(localBin, "webstop"), """
-                #!/bin/bash
-                exec bash /usr/local/share/ilynxos/wireless-desktop/stop-web.sh "${'$'}@"
+                exec bash /usr/local/share/ilynxos/vnc/vncstop.sh "${'$'}@"
             """.trimIndent())
 
             // Termux compatibility wrapper
@@ -819,16 +778,6 @@ WPEOF
                     exec Xtigervnc "${'$'}@"
                 fi
                 exec /usr/bin/Xtigervnc "${'$'}@"
-            """.trimIndent())
-
-            writeExecutableScript(File(localBin, "wireless-status"), """
-                #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/status.sh "${'$'}@"
-            """.trimIndent())
-
-            writeExecutableScript(File(localBin, "wireless-install"), """
-                #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/install.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(localBin, "set-wallpaper"), """
@@ -861,60 +810,47 @@ WPEOF
 
                 pcmanfm-qt --profile=lxqt -w "${'$'}IMAGE" --wallpaper-mode "${'$'}MODE" 2>/dev/null || true
                 pcmanfm-qt -w "${'$'}IMAGE" --wallpaper-mode "${'$'}MODE" 2>/dev/null || true
-
-                if command -v xfconf-query >/dev/null 2>&1; then
-                    for prop in ${'$'}(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep -E "last-image|image-path"); do
-                        xfconf-query -c xfce4-desktop -p "${'$'}prop" -s "${'$'}IMAGE" 2>/dev/null || true
-                    done
-                fi
             """.trimIndent())
 
             // Create user home scripts in /root
             val rootDir = File(rootfsDir, "root")
             rootDir.mkdirs()
+
+            // Remove legacy web scripts from /root
+            listOf("webstart.sh", "webstop.sh", "web-start.sh", "web-stop.sh").forEach {
+                try { File(rootDir, it).delete() } catch (_: Exception) {}
+            }
+
             writeExecutableScript(File(rootDir, "vncstart.sh"), """
                 #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}@"
+                exec /usr/local/share/ilynxos/vnc/vncstart.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(rootDir, "vncstop.sh"), """
                 #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh "${'$'}@"
+                exec /usr/local/share/ilynxos/vnc/vncstop.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(rootDir, "vnc-start.sh"), """
                 #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}@"
+                exec /usr/local/share/ilynxos/vnc/vncstart.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(rootDir, "vnc-stop.sh"), """
                 #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh "${'$'}@"
+                exec /usr/local/share/ilynxos/vnc/vncstop.sh "${'$'}@"
             """.trimIndent())
 
-            writeExecutableScript(File(rootDir, "webstart.sh"), """
-                #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}@"
-            """.trimIndent())
-
-            writeExecutableScript(File(rootDir, "webstop.sh"), """
-                #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/stop-web.sh "${'$'}@"
-            """.trimIndent())
-
-            writeExecutableScript(File(rootDir, "web-start.sh"), """
-                #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}@"
-            """.trimIndent())
-
-            writeExecutableScript(File(rootDir, "web-stop.sh"), """
-                #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/stop-web.sh "${'$'}@"
-            """.trimIndent())
-
-            // Setup default ~/.vnc/xstartup
+            // Setup default ~/.vnc/xstartup and ~/.vnc/config
             val vncConfigDir = File(rootDir, ".vnc")
             vncConfigDir.mkdirs()
+
+            try {
+                File(vncConfigDir, "config").writeText(
+                    "UseBlacklist=0\nBlacklistThreshold=0\nBlacklistTimeout=0\nlocalhost=no\n"
+                )
+            } catch (_: Exception) {}
+
             val xstartupFile = File(vncConfigDir, "xstartup")
             writeExecutableScript(xstartupFile, """
                 #!/bin/bash
@@ -937,9 +873,12 @@ WPEOF
                 export GDK_BACKEND=x11
                 export GIO_USE_VFS=local
                 export GVFS_DISABLE_FUSE=1
+                export XDG_CONFIG_HOME=/root/.config
+                export XDG_DATA_HOME=/root/.local/share
 
+                rm -rf /var/run/dbus/pid /run/dbus/pid 2>/dev/null || true
                 dbus-uuidgen --ensure 2>/dev/null || true
-                eval ${'$'}(dbus-launch --sh-syntax --exit-with-session) 2>/dev/null || true
+                eval $(dbus-launch --sh-syntax --exit-with-session) 2>/dev/null || true
 
                 WALLPAPER=""
                 for wp in \
@@ -955,87 +894,32 @@ WPEOF
                     fi
                 done
                 if [ -z "${'$'}WALLPAPER" ]; then
-                    WALLPAPER=${'$'}(find /usr/share/backgrounds /usr/share/wallpapers -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null | head -n 1)
+                    WALLPAPER=$(find /usr/share/backgrounds /usr/share/wallpapers -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null | head -n 1)
                 fi
 
-                for d in /root/.config/pcmanfm-qt/lxqt /root/.config/pcmanfm-qt/vnc /root/.config/pcmanfm-qt/default /etc/xdg/pcmanfm-qt/lxqt /etc/xdg/pcmanfm-qt/default; do
-                    mkdir -p "${'$'}d" 2>/dev/null || true
-                    cat << SETEOF > "${'$'}d/settings.conf"
-[Behavior]
-SingleClick=true
-ConfirmDelete=true
-QuickExec=true
-
-[Desktop]
-Wallpaper=${'$'}WALLPAPER
-WallpaperMode=zoom
-PerScreenWallpaper=false
-TransformWallpaper=true
-DesktopIconSize=48
-WorkAreaMargins=12, 12, 12, 12
-BgColor=#1e1e2e
-FgColor=#ffffff
-
-[FolderView]
-Mode=icon
-SETEOF
-                    for conf in desktop-items-0.conf desktop-items-1.conf desktop-items-VNC-0.conf desktop-items-VNC-1.conf desktop-items-default.conf desktop-items-screen.conf desktop-items-screen0.conf desktop-items-Screen0.conf desktop-items-SCREEN.conf desktop-items-None.conf desktop-items-VIRTUAL1.conf desktop-items.conf; do
-                        cat << WPEOF > "${'$'}d/${'$'}conf"
-[General]
-wallpaper=${'$'}WALLPAPER
-wallpaper_mode=zoom
-show_wm_menu=false
-sort_type=0
-sort_by=0
-WPEOF
-                    done
-                done
-
-                # Pre-generate PCManFM-Qt wallpaper cache
                 if [ -n "${'$'}WALLPAPER" ] && [ -f "${'$'}WALLPAPER" ]; then
-                    for cache_dir in /root/.cache/pcmanfm-qt/lxqt /root/.cache/pcmanfm-qt/vnc /root/.cache/pcmanfm-qt/default; do
-                        mkdir -p "${'$'}cache_dir" 2>/dev/null || true
-                        if command -v convert >/dev/null 2>&1; then
-                            convert "${'$'}WALLPAPER" -resize 1280x720^ -gravity center -extent 1280x720 "${'$'}cache_dir/wallpaper.cache" 2>/dev/null || cp -f "${'$'}WALLPAPER" "${'$'}cache_dir/wallpaper.cache" 2>/dev/null || true
-                        else
-                            cp -f "${'$'}WALLPAPER" "${'$'}cache_dir/wallpaper.cache" 2>/dev/null || true
-                        fi
-                        echo "${'$'}WALLPAPER" > "${'$'}cache_dir/wallpaper.cache.info" 2>/dev/null || true
-                        date +%Y-%m-%d-%H:%M:%S.%3N >> "${'$'}cache_dir/wallpaper.cache.info" 2>/dev/null || true
-                    done
-
-                    if command -v display >/dev/null 2>&1; then
-                        display -window root -backdrop "${'$'}WALLPAPER" >/dev/null 2>&1 &
-                    elif command -v feh >/dev/null 2>&1; then
-                        feh --bg-fill "${'$'}WALLPAPER" 2>/dev/null || true
+                    if command -v feh >/dev/null 2>&1; then
+                        feh --bg-fill "${'$'}WALLPAPER" >/dev/null 2>&1 || true
                     fi
+                else
+                    xsetroot -cursor_name left_ptr -solid "#1e1e2e" 2>/dev/null || true
                 fi
-                xsetroot -cursor_name left_ptr -solid "#1e1e2e" 2>/dev/null || true
+                xsetroot -cursor_name left_ptr 2>/dev/null || true
 
-                if command -v openbox >/dev/null 2>&1; then
-                    if [ -f "/root/.config/openbox/rc.xml" ]; then
-                        openbox --config-file "/root/.config/openbox/rc.xml" >/dev/null 2>&1 &
-                    else
-                        openbox >/dev/null 2>&1 &
-                    fi
-                fi
-                sleep 0.2
+                chmod +x /root/Desktop/*.desktop 2>/dev/null || true
 
-                if command -v pcmanfm-qt >/dev/null 2>&1; then
-                    pcmanfm-qt --desktop --profile=lxqt >/dev/null 2>&1 &
-                fi
-                sleep 0.2
-
-                if command -v lxqt-panel >/dev/null 2>&1; then
-                    lxqt-panel >/dev/null 2>&1 &
-                elif command -v xfce4-panel >/dev/null 2>&1; then
-                    xfce4-panel --sm-client-disable --disable-wm-check >/dev/null 2>&1 &
-                fi
-
-                if command -v pcmanfm-qt >/dev/null 2>&1 && [ -f "${'$'}WALLPAPER" ]; then
+                openbox --config-file /root/.config/openbox/rc.xml &
+                sleep 0.4
+                pcmanfm-qt --desktop --profile=lxqt &
+                sleep 0.4
+                [ -f /usr/local/bin/snap-daemon ] && /usr/local/bin/snap-daemon &
+                sleep 0.3
+                lxqt-notificationd &
+                lxqt-panel &
+                if [ -n "${'$'}WALLPAPER" ] && [ -f "${'$'}WALLPAPER" ]; then
                     (
                         sleep 1
-                        if [ -x /usr/local/bin/set-wallpaper ] && [ -n "${'$'}WALLPAPER" ]; then
+                        if [ -x /usr/local/bin/set-wallpaper ]; then
                             /usr/local/bin/set-wallpaper "${'$'}WALLPAPER" zoom >/dev/null 2>&1 || true
                         fi
                         pcmanfm-qt --profile=lxqt -w "${'$'}WALLPAPER" --wallpaper-mode=zoom >/dev/null 2>&1 || true
@@ -1046,9 +930,9 @@ WPEOF
                 wait
             """.trimIndent())
 
-            Log.i(TAG, "Unpacked wireless desktop scripts and installed /usr/local/bin wrappers.")
+            Log.i(TAG, "Unpacked VNC scripts and installed /usr/local/bin wrappers.")
         } catch (e: Exception) {
-            Log.w(TAG, "Could not unpack wireless desktop scripts: ${e.message}")
+            Log.w(TAG, "Could not unpack VNC scripts: ${e.message}")
         }
     }
 

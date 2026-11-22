@@ -88,7 +88,7 @@ When developing for iLynxOS, keep in mind:
 - **Zero Root Dependency**: iLynxOS operates entirely in user-space using `libproot.so` syscall interception. Never assume or require `su` root permissions.
 - **In-Process Display Server**: The X11 display server (`libXlorie`) runs in-process inside the Android app on UNIX domain socket `:0` (and `:1` for virtual desktop remote displays).
 - **Jetpack Compose UI**: All Android host UI is built modern, fluent, and edge-to-edge aware with Jetpack Compose Material 3.
-- **Wireless Remote Subsystem**: VNC (`5901`) and HTML5 Web Desktop (`14500` via `websockify` + `noVNC`) are modularized in `com.termux.ilynxos.wireless`.
+- **VNC Remote Subsystem**: VNC server management (`5901` for virtual display, `5900` for mirror) is modularized in `com.termux.ilynxos.vnc`.
 
 ---
 

@@ -37,7 +37,7 @@ The ultimate purpose of iLynxOS is not to replace smartphones or laptops. **It i
 * **⚡ Breaking Device Limitations:** Shatter the restrictions of traditional mobile operating systems and unlock a true desktop experience with full multitasking, window management, and native peripherals.
 * **💻 Empowering Developers Everywhere:** Carry a genuine Linux environment on the go—complete with full terminal runtimes, compilers, package management (`apt`), Git, programming languages (Python, Rust, C++, Node.js), and desktop IDEs like VS Code.
 * **🔓 Championing Software Freedom & Sovereignty:** Users deserve complete control and ownership over their computing environment rather than being confined to predefined, walled-garden mobile paradigms.
-* **🖥️ Unifying the Device Ecosystem:** Effortlessly bridge smartphones, tablets, external HDMI monitors, and Smart TVs into a continuous, flexible workspace through low-latency wireless desktop sharing (VNC & HTML5 Web).
+* **🖥️ Unifying the Device Ecosystem:** Effortlessly bridge smartphones, tablets, and PCs into a continuous, flexible workspace through low-latency remote VNC desktop sharing.
 * **🎒 True Workspace Portability:** Your development stack, project files, configurations, and personal workflow travel with you everywhere—never bound to a single physical machine or desk.
 
 ---
@@ -136,9 +136,10 @@ graph TD
    - Quick command chips (`cat /etc/os-release`, `uname -a`, `whoami`, `ls -la /`, `df -h`, `free -m`, `ps aux`, `which startlxqt`).
    - One-tap clipboard copy and history clearing.
 
-6. **Wireless Remote Desktop (Dual Mode)**:
-   - **RealVNC / RFB Server**: Multithreaded `x11vnc` with `-noxdamage`, low CPU overhead, and software arrow cursor. Compatible with RealVNC Viewer, TigerVNC, and Remmina.
-   - **Web Mode (HTML5 Browser)**: Integrated `websockify` + `noVNC` with fast zlib compression (`compression=1`) and QR code auto-connect for browser access without client installation.
+6. **VNC Remote Desktop**:
+   - **TigerVNC / RFB Server**: High-performance VNC server with low CPU overhead, configurable resolution, and password authentication. Compatible with TigerVNC, RealVNC Viewer, Remmina, and AVNC.
+   - **Dual-Session Flexibility**: Switch between a dedicated headless virtual desktop (`:1`) or mirror the on-device mobile screen (`:0`).
+   - **One-Tap Controls**: Automated lifecycle management via `vncstart` and `vncstop` directly inside the app.
 
 7. **Foreground Service & Lifecycle**:
    - `LinuxSessionService` keeps the desktop environment alive in the background.
