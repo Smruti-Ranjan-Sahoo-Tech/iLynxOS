@@ -107,121 +107,258 @@ pactl load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymou
 
 # 7. Create/Ensure xstartup script
 if command -v proot-distro >/dev/null 2>&1; then
-cat << EOF_XSTART > "$HOME/.vnc/xstartup"
+cat << 'EOF_XSTART' > "$HOME/.vnc/xstartup"
 #!/data/data/com.termux/files/usr/bin/bash
 termux-wake-lock 2>/dev/null || true
 pulseaudio --start --exit-idle-time=-1 >/dev/null 2>&1 || true
 pactl load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1 >/dev/null 2>&1 || true
 
-DISP="\${DISPLAY:-:$DISP_NUM}"
+export DISPLAY="${DISPLAY:-:1}"
 
-proot-distro login iLynxOS --shared-tmp -- bash -c "
-    export DISPLAY=\$DISP
+proot-distro login iLynxOS --shared-tmp -- bash -c '
+    export DISPLAY="${DISPLAY:-:1}"
+    export HOME=/root
+    export USER=root
     export TMPDIR=/tmp
     export PULSE_SERVER=127.0.0.1
     export XDG_CURRENT_DESKTOP=LXQt
     export XDG_SESSION_TYPE=x11
     export XDG_SESSION_DESKTOP=LXQt
     export DESKTOP_SESSION=lxqt
-    export XDG_CONFIG_HOME=/root/.config
-    export XDG_DATA_HOME=/root/.local/share
+    export XDG_MENU_PREFIX="lxqt-"
+    export QT_QPA_PLATFORMTHEME=lxqt
+    export QT_PLATFORM_PLUGIN=lxqt
+    export QT_STYLE_OVERRIDE=Fusion
+    export GTK_THEME=Greybird-dark
+    export XCURSOR_THEME=Adwaita
     export LIBGL_ALWAYS_SOFTWARE=1
     export GDK_BACKEND=x11
+    export GIO_USE_VFS=local
+    export GVFS_DISABLE_FUSE=1
+    export XDG_CONFIG_HOME=/root/.config
+    export XDG_DATA_HOME=/root/.local/share
+    export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH
 
     rm -rf /var/run/dbus/pid /run/dbus/pid 2>/dev/null || true
     dbus-uuidgen --ensure 2>/dev/null || true
-    eval \\\$(dbus-launch --sh-syntax --exit-with-session) 2>/dev/null || true
+    eval $(dbus-launch --sh-syntax --exit-with-session) 2>/dev/null || true
 
-    WALLPAPER='/usr/share/backgrounds/windows-11-bloom-dark.jpg'
-    [ ! -f \"\\\$WALLPAPER\" ] && WALLPAPER='/usr/share/backgrounds/ilynx-wallpaper.png'
+    WALLPAPER=""
+    for wp in \
+        "/usr/share/backgrounds/windows-11-bloom-dark.jpg" \
+        "/usr/share/backgrounds/ilynx-wallpaper.png" \
+        "/usr/share/backgrounds/dark-abstract-flow.jpg" \
+        "/usr/share/backgrounds/honda-ev-cyberpunk.jpg" \
+        "/usr/share/backgrounds/windows-11-bloom-light.jpg" \
+        "/usr/share/backgrounds/xfce/xfce-blue.jpg"; do
+        if [ -f "$wp" ]; then
+            WALLPAPER="$wp"
+            break
+        fi
+    done
+    if [ -z "$WALLPAPER" ]; then
+        WALLPAPER=$(find /usr/share/backgrounds /usr/share/wallpapers -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null | head -n 1)
+    fi
 
-    mkdir -p /root/.config/pcmanfm-qt/lxqt /root/Desktop 2>/dev/null || true
-    cat << 'EOF_DESK' > /root/.config/pcmanfm-qt/lxqt/desktop-items-0.conf
+    # Configure PCManFM-Qt config files
+    for d in /root/.config/pcmanfm-qt/lxqt /root/.config/pcmanfm-qt/vnc /root/.config/pcmanfm-qt/default /etc/xdg/pcmanfm-qt/lxqt /etc/xdg/pcmanfm-qt/default; do
+        mkdir -p "$d" 2>/dev/null || true
+        cat << SETEOF > "$d/settings.conf"
+[Desktop]
+Wallpaper=$WALLPAPER
+WallpaperMode=zoom
+PerScreenWallpaper=false
+TransformWallpaper=true
+DesktopIconSize=48
+WorkAreaMargins=12, 12, 12, 12
+BgColor=#1e1e2e
+FgColor=#ffffff
+
+[Behavior]
+SingleClick=true
+ConfirmDelete=true
+QuickExec=true
+
+[FolderView]
+Mode=icon
+SETEOF
+        for c in desktop-items-0.conf desktop-items-1.conf desktop-items-VNC-0.conf desktop-items-VNC-1.conf desktop-items-screen.conf desktop-items-screen0.conf desktop-items-Screen0.conf desktop-items-SCREEN.conf desktop-items-default.conf desktop-items-None.conf desktop-items-VIRTUAL1.conf desktop-items.conf; do
+            cat << CONFEOF > "$d/$c"
 [General]
-wallpaper=\$WALLPAPER
-wallpaper_mode=crop
+wallpaper=$WALLPAPER
+wallpaper_mode=zoom
 show_wm_menu=false
 sort_type=0
 sort_by=0
-shadow_hidden=false
-show_hidden=false
+CONFEOF
+        done
+    done
 
-[Folder]
-home=true
-trash=true
-computer=true
-network=false
-EOF_DESK
-    cp -f /root/.config/pcmanfm-qt/lxqt/desktop-items-0.conf /root/.config/pcmanfm-qt/lxqt/desktop-items-1.conf 2>/dev/null || true
-    cp -f /root/.config/pcmanfm-qt/lxqt/desktop-items-0.conf /root/.config/pcmanfm-qt/lxqt/desktop-items-default.conf 2>/dev/null || true
+    # Pre-generate PCManFM-Qt wallpaper cache so desktop never displays black
+    if [ -n "$WALLPAPER" ] && [ -f "$WALLPAPER" ]; then
+        for cache_dir in /root/.cache/pcmanfm-qt/lxqt /root/.cache/pcmanfm-qt/vnc /root/.cache/pcmanfm-qt/default; do
+            mkdir -p "$cache_dir" 2>/dev/null || true
+            if command -v convert >/dev/null 2>&1; then
+                convert "$WALLPAPER" -resize 1280x720^ -gravity center -extent 1280x720 "$cache_dir/wallpaper.cache" 2>/dev/null || cp -f "$WALLPAPER" "$cache_dir/wallpaper.cache" 2>/dev/null || true
+            else
+                cp -f "$WALLPAPER" "$cache_dir/wallpaper.cache" 2>/dev/null || true
+            fi
+            echo "$WALLPAPER" > "$cache_dir/wallpaper.cache.info" 2>/dev/null || true
+            date +%Y-%m-%d-%H:%M:%S.%3N >> "$cache_dir/wallpaper.cache.info" 2>/dev/null || true
+        done
+
+        # Render wallpaper to root window
+        if command -v display >/dev/null 2>&1; then
+            display -window root -backdrop "$WALLPAPER" >/dev/null 2>&1 &
+        elif command -v feh >/dev/null 2>&1; then
+            feh --bg-fill "$WALLPAPER" >/dev/null 2>&1 || true
+        fi
+    fi
+    xsetroot -cursor_name left_ptr -solid "#1e1e2e" 2>/dev/null || true
+
     chmod +x /root/Desktop/*.desktop 2>/dev/null || true
 
     openbox --config-file /root/.config/openbox/rc.xml &
-    sleep 0.5
-    pcmanfm-qt --desktop --profile=lxqt &
-    sleep 0.5
-    [ -f /usr/local/bin/snap-daemon ] && /usr/local/bin/snap-daemon &
     sleep 0.4
+    pcmanfm-qt --desktop --profile=lxqt &
+    sleep 0.4
+    [ -f /usr/local/bin/snap-daemon ] && /usr/local/bin/snap-daemon &
+    sleep 0.3
     lxqt-notificationd &
     lxqt-panel &
+    (
+        sleep 1
+        if [ -x /usr/local/bin/set-wallpaper ] && [ -n "$WALLPAPER" ]; then
+            /usr/local/bin/set-wallpaper "$WALLPAPER" zoom >/dev/null 2>&1 || true
+        fi
+        pcmanfm-qt --profile=lxqt -w "$WALLPAPER" --wallpaper-mode=zoom >/dev/null 2>&1 || true
+        pcmanfm-qt -w "$WALLPAPER" --wallpaper-mode=zoom >/dev/null 2>&1 || true
+    ) &
     wait
-"
+'
 EOF_XSTART
 else
-cat << EOF_XSTART > "$HOME/.vnc/xstartup"
+cat << 'EOF_XSTART' > "$HOME/.vnc/xstartup"
 #!/bin/bash
 command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock 2>/dev/null || true
 pulseaudio --start --exit-idle-time=-1 >/dev/null 2>&1 || true
 pactl load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1 >/dev/null 2>&1 || true
 
-export DISPLAY="\${DISPLAY:-:$DISP_NUM}"
+export DISPLAY="${DISPLAY:-:1}"
+export HOME=/root
+export USER=root
 export TMPDIR=/tmp
 export PULSE_SERVER=127.0.0.1
 export XDG_CURRENT_DESKTOP=LXQt
 export XDG_SESSION_TYPE=x11
 export XDG_SESSION_DESKTOP=LXQt
 export DESKTOP_SESSION=lxqt
-export XDG_CONFIG_HOME=/root/.config
-export XDG_DATA_HOME=/root/.local/share
+export XDG_MENU_PREFIX="lxqt-"
+export QT_QPA_PLATFORMTHEME=lxqt
+export QT_PLATFORM_PLUGIN=lxqt
+export QT_STYLE_OVERRIDE=Fusion
+export GTK_THEME=Greybird-dark
+export XCURSOR_THEME=Adwaita
 export LIBGL_ALWAYS_SOFTWARE=1
 export GDK_BACKEND=x11
+export GIO_USE_VFS=local
+export GVFS_DISABLE_FUSE=1
+export XDG_CONFIG_HOME=/root/.config
+export XDG_DATA_HOME=/root/.local/share
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH
 
 rm -rf /var/run/dbus/pid /run/dbus/pid 2>/dev/null || true
 dbus-uuidgen --ensure 2>/dev/null || true
-eval \$(dbus-launch --sh-syntax --exit-with-session) 2>/dev/null || true
+eval $(dbus-launch --sh-syntax --exit-with-session) 2>/dev/null || true
 
-WALLPAPER='/usr/share/backgrounds/windows-11-bloom-dark.jpg'
-[ ! -f "\$WALLPAPER" ] && WALLPAPER='/usr/share/backgrounds/ilynx-wallpaper.png'
+WALLPAPER=""
+for wp in \
+    "/usr/share/backgrounds/windows-11-bloom-dark.jpg" \
+    "/usr/share/backgrounds/ilynx-wallpaper.png" \
+    "/usr/share/backgrounds/dark-abstract-flow.jpg" \
+    "/usr/share/backgrounds/honda-ev-cyberpunk.jpg" \
+    "/usr/share/backgrounds/windows-11-bloom-light.jpg" \
+    "/usr/share/backgrounds/xfce/xfce-blue.jpg"; do
+    if [ -f "$wp" ]; then
+        WALLPAPER="$wp"
+        break
+    fi
+done
+if [ -z "$WALLPAPER" ]; then
+    WALLPAPER=$(find /usr/share/backgrounds /usr/share/wallpapers -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null | head -n 1)
+fi
 
-mkdir -p /root/.config/pcmanfm-qt/lxqt /root/Desktop 2>/dev/null || true
-cat << 'EOF_DESK' > /root/.config/pcmanfm-qt/lxqt/desktop-items-0.conf
+for d in /root/.config/pcmanfm-qt/lxqt /root/.config/pcmanfm-qt/vnc /root/.config/pcmanfm-qt/default /etc/xdg/pcmanfm-qt/lxqt /etc/xdg/pcmanfm-qt/default; do
+    mkdir -p "$d" 2>/dev/null || true
+    cat << SETEOF > "$d/settings.conf"
+[Desktop]
+Wallpaper=$WALLPAPER
+WallpaperMode=zoom
+PerScreenWallpaper=false
+TransformWallpaper=true
+DesktopIconSize=48
+WorkAreaMargins=12, 12, 12, 12
+BgColor=#1e1e2e
+FgColor=#ffffff
+
+[Behavior]
+SingleClick=true
+ConfirmDelete=true
+QuickExec=true
+
+[FolderView]
+Mode=icon
+SETEOF
+    for c in desktop-items-0.conf desktop-items-1.conf desktop-items-VNC-0.conf desktop-items-VNC-1.conf desktop-items-screen.conf desktop-items-screen0.conf desktop-items-Screen0.conf desktop-items-SCREEN.conf desktop-items-default.conf desktop-items-None.conf desktop-items-VIRTUAL1.conf desktop-items.conf; do
+        cat << CONFEOF > "$d/$c"
 [General]
 wallpaper=$WALLPAPER
-wallpaper_mode=crop
+wallpaper_mode=zoom
 show_wm_menu=false
 sort_type=0
 sort_by=0
-shadow_hidden=false
-show_hidden=false
+CONFEOF
+    done
+done
 
-[Folder]
-home=true
-trash=true
-computer=true
-network=false
-EOF_DESK
-cp -f /root/.config/pcmanfm-qt/lxqt/desktop-items-0.conf /root/.config/pcmanfm-qt/lxqt/desktop-items-1.conf 2>/dev/null || true
-cp -f /root/.config/pcmanfm-qt/lxqt/desktop-items-0.conf /root/.config/pcmanfm-qt/lxqt/desktop-items-default.conf 2>/dev/null || true
+if [ -n "$WALLPAPER" ] && [ -f "$WALLPAPER" ]; then
+    for cache_dir in /root/.cache/pcmanfm-qt/lxqt /root/.cache/pcmanfm-qt/vnc /root/.cache/pcmanfm-qt/default; do
+        mkdir -p "$cache_dir" 2>/dev/null || true
+        if command -v convert >/dev/null 2>&1; then
+            convert "$WALLPAPER" -resize 1280x720^ -gravity center -extent 1280x720 "$cache_dir/wallpaper.cache" 2>/dev/null || cp -f "$WALLPAPER" "$cache_dir/wallpaper.cache" 2>/dev/null || true
+        else
+            cp -f "$WALLPAPER" "$cache_dir/wallpaper.cache" 2>/dev/null || true
+        fi
+        echo "$WALLPAPER" > "$cache_dir/wallpaper.cache.info" 2>/dev/null || true
+        date +%Y-%m-%d-%H:%M:%S.%3N >> "$cache_dir/wallpaper.cache.info" 2>/dev/null || true
+    done
+
+    if command -v display >/dev/null 2>&1; then
+        display -window root -backdrop "$WALLPAPER" >/dev/null 2>&1 &
+    elif command -v feh >/dev/null 2>&1; then
+        feh --bg-fill "$WALLPAPER" >/dev/null 2>&1 || true
+    fi
+fi
+xsetroot -cursor_name left_ptr -solid "#1e1e2e" 2>/dev/null || true
+
 chmod +x /root/Desktop/*.desktop 2>/dev/null || true
 
 openbox --config-file /root/.config/openbox/rc.xml &
-sleep 0.5
-pcmanfm-qt --desktop --profile=lxqt &
-sleep 0.5
-[ -f /usr/local/bin/snap-daemon ] && /usr/local/bin/snap-daemon &
 sleep 0.4
+pcmanfm-qt --desktop --profile=lxqt &
+sleep 0.4
+[ -f /usr/local/bin/snap-daemon ] && /usr/local/bin/snap-daemon &
+sleep 0.3
 lxqt-notificationd &
 lxqt-panel &
+(
+    sleep 1
+    if [ -x /usr/local/bin/set-wallpaper ] && [ -n "$WALLPAPER" ]; then
+        /usr/local/bin/set-wallpaper "$WALLPAPER" zoom >/dev/null 2>&1 || true
+    fi
+    pcmanfm-qt --profile=lxqt -w "$WALLPAPER" --wallpaper-mode=zoom >/dev/null 2>&1 || true
+    pcmanfm-qt -w "$WALLPAPER" --wallpaper-mode=zoom >/dev/null 2>&1 || true
+) &
 wait
 EOF_XSTART
 fi

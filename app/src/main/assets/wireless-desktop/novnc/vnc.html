@@ -46,6 +46,18 @@
 
     <script type="module" crossorigin="anonymous" src="app/error-handler.js"></script>
     <script type="module" crossorigin="anonymous" src="app/ui.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        let changed = false;
+        if (!params.has('autoconnect')) { params.set('autoconnect', 'true'); changed = true; }
+        if (!params.has('resize')) { params.set('resize', 'scale'); changed = true; }
+        if (!params.has('quality')) { params.set('quality', '6'); changed = true; }
+        if (!params.has('compression')) { params.set('compression', '1'); changed = true; }
+        if (!params.has('password')) { params.set('password', 'raja1234'); changed = true; }
+        if (changed) {
+            window.location.replace("vnc.html?" + params.toString() + window.location.hash);
+        }
+    </script>
 </head>
 
 <body>
