@@ -1,6 +1,5 @@
-#!/data/data/com.termux/files/usr/bin/bash
-# If not running in Termux, use standard bash
-[ ! -x "/data/data/com.termux/files/usr/bin/bash" ] && exec /bin/bash "$0" "$@"
+#!/bin/bash
+[ ! -x "/bin/bash" ] && [ -x "/data/data/com.termux/files/usr/bin/bash" ] && exec /data/data/com.termux/files/usr/bin/bash "$0" "$@"
 # =======================================================
 # i-Lynx OS 1.0 - Remote Web Desktop Stopper
 # =======================================================

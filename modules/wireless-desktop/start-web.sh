@@ -1,6 +1,6 @@
-#!/data/data/com.termux/files/usr/bin/bash
+#!/bin/bash
 # If not running in Termux, use standard bash
-[ ! -x "/data/data/com.termux/files/usr/bin/bash" ] && exec /bin/bash "$0" "$@"
+[ ! -x "/bin/bash" ] && [ -x "/data/data/com.termux/files/usr/bin/bash" ] && exec /data/data/com.termux/files/usr/bin/bash "$0" "$@"
 # =======================================================
 # i-Lynx OS 1.0 - High Performance Remote Web Desktop Launcher (HTML5 noVNC)
 # =======================================================
@@ -165,10 +165,11 @@ if ! is_vnc_ready; then
     done
 
     if [ -n "$VNC_STARTER" ]; then
-        "$VNC_STARTER" "$VNC_PORT" "$WEB_PASS" "$DISP_NUM" "$RESOLUTION" &
+        bash "$VNC_STARTER" "$VNC_PORT" "$WEB_PASS" "$DISP_NUM" "$RESOLUTION" &
     else
         echo "[!] Warning: No VNC starter script found. Falling back to proot vncserver..."
         command -v vncserver >/dev/null 2>&1 && vncserver ":$DISP_NUM" -geometry "$RESOLUTION" -depth 24 -ac &
+        command -v tigervncserver >/dev/null 2>&1 && tigervncserver ":$DISP_NUM" -geometry "$RESOLUTION" -depth 24 -ac &
     fi
 
     # Wait up to 10 seconds for VNC backend to become available
@@ -203,6 +204,7 @@ if [ "$USE_TLS" = "1" ] || [ "$USE_TLS" = "true" ]; then
 fi
 
 # 7. Configure Python search path for websockify
+export PYTHONPATH="/usr/local/share/ilynxos/wireless-desktop:$CURRENT_DIR:$PYTHONPATH"
 if [ -n "$SCRIPT_DIR" ]; then
     export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
 fi

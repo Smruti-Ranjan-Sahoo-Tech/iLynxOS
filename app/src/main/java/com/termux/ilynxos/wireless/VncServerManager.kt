@@ -142,7 +142,7 @@ class VncServerManager(private val context: Context) {
 
         // 3. Trigger startup cleanly via CLI execution (script uses file-lock to prevent race)
         try {
-            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh $effectivePort '$safePass' $dispNum 1280x720 &") { line ->
+            runtimeEngine.executeCliCommand("bash /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh $effectivePort '$safePass' $dispNum 1280x720 &") { line ->
                 Log.d(TAG, "[VNC Output] $line")
             }
         } catch (e: Exception) {
@@ -181,7 +181,7 @@ class VncServerManager(private val context: Context) {
         } catch (_: Exception) {}
 
         try {
-            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh &") { line ->
+            runtimeEngine.executeCliCommand("bash /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh &") { line ->
                 Log.d(TAG, "[VNC Stop] $line")
             }
         } catch (_: Exception) {}

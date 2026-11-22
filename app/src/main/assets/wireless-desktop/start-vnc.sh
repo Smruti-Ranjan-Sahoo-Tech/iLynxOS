@@ -1,6 +1,6 @@
-#!/data/data/com.termux/files/usr/bin/bash
+#!/bin/bash
 # If not running in Termux, use standard bash
-[ ! -x "/data/data/com.termux/files/usr/bin/bash" ] && exec /bin/bash "$0" "$@"
+[ ! -x "/bin/bash" ] && [ -x "/data/data/com.termux/files/usr/bin/bash" ] && exec /data/data/com.termux/files/usr/bin/bash "$0" "$@"
 # =======================================================
 # i-Lynx OS 1.0 - High Performance Remote VNC Desktop Launcher
 # =======================================================
@@ -76,7 +76,9 @@ echo "=========================================="
 
 # 4. Clean up any existing session / stale locks for this display
 command -v vncserver >/dev/null 2>&1 && vncserver -kill ":$DISP_NUM" >/dev/null 2>&1 || true
+command -v tigervncserver >/dev/null 2>&1 && tigervncserver -kill ":$DISP_NUM" >/dev/null 2>&1 || true
 pkill -9 -f "Xvnc :$DISP_NUM" >/dev/null 2>&1 || true
+pkill -9 -f "Xtigervnc.*:$DISP_NUM" >/dev/null 2>&1 || true
 pkill -9 -f "Xvfb :$DISP_NUM" >/dev/null 2>&1 || true
 pkill -9 -f "x11vnc.*:$DISP_NUM" 2>/dev/null || true
 pkill -9 -f "x11vnc.*-rfbport $PORT" 2>/dev/null || true
@@ -91,6 +93,14 @@ if [ -z "$VNC_PASS" ] || [[ "$VNC_PASS" == ilynx* ]] || [ "$VNC_PASS" = "ilinux1
 fi
 
 mkdir -p "$HOME/.vnc" /root/.vnc 2>/dev/null || true
+cat << 'EOF_VNCCONFIG' > "$HOME/.vnc/config"
+UseBlacklist=0
+BlacklistThreshold=0
+BlacklistTimeout=0
+localhost=no
+EOF_VNCCONFIG
+cp -f "$HOME/.vnc/config" /root/.vnc/config 2>/dev/null || true
+
 printf "%s\n%s\nn\n" "$VNC_PASS" "$VNC_PASS" | vncpasswd >/dev/null 2>&1 || true
 chmod 600 "$HOME/.vnc/passwd" 2>/dev/null || true
 if [ -f "$HOME/.vnc/passwd" ] && [ "$HOME" != "/root" ]; then
@@ -369,13 +379,31 @@ if [ "$HOME" != "/root" ]; then
     chmod +x /root/.vnc/xstartup 2>/dev/null || true
 fi
 
-# 8. Launch TigerVNC Server (Xvnc)
-if command -v vncserver >/dev/null 2>&1; then
-    vncserver ":$DISP_NUM" -geometry "$RESOLUTION" -depth 24 -ac
+# 8. Launch VNC Server
+EXTRA_VNC_OPTS="-UseBlacklist=0 -BlacklistThreshold=0 -BlacklistTimeout=0 -localhost no"
+
+if [ "$DISP_NUM" = "0" ]; then
+    echo "[VNC] Attaching x11vnc to active display :0 on port $PORT..."
+    x11vnc -display :0 -rfbport "$PORT" -rfbauth "$HOME/.vnc/passwd" -shared -forever -bg -noxdamage -repeat >/dev/null 2>&1
+elif command -v vncserver >/dev/null 2>&1; then
+    vncserver ":$DISP_NUM" -geometry "$RESOLUTION" -depth 24 -ac $EXTRA_VNC_OPTS
+elif command -v tigervncserver >/dev/null 2>&1; then
+    tigervncserver ":$DISP_NUM" -geometry "$RESOLUTION" -depth 24 -ac $EXTRA_VNC_OPTS
 elif command -v Xvnc >/dev/null 2>&1; then
-    Xvnc ":$DISP_NUM" -geometry "$RESOLUTION" -depth 24 -rfbport "$PORT" -rfbauth "$HOME/.vnc/passwd" -ac &
+    Xvnc ":$DISP_NUM" -geometry "$RESOLUTION" -depth 24 -rfbport "$PORT" -rfbauth "$HOME/.vnc/passwd" -ac $EXTRA_VNC_OPTS &
     sleep 1
     DISPLAY=":$DISP_NUM" "$HOME/.vnc/xstartup" &
+elif command -v Xtigervnc >/dev/null 2>&1; then
+    Xtigervnc ":$DISP_NUM" -geometry "$RESOLUTION" -depth 24 -rfbport "$PORT" -rfbauth "$HOME/.vnc/passwd" -ac $EXTRA_VNC_OPTS &
+    sleep 1
+    DISPLAY=":$DISP_NUM" "$HOME/.vnc/xstartup" &
+elif command -v Xvfb >/dev/null 2>&1 && command -v x11vnc >/dev/null 2>&1; then
+    echo "[VNC] Launching virtual Xvfb + x11vnc fallback..."
+    Xvfb ":$DISP_NUM" -screen 0 "${RESOLUTION}x24" >/dev/null 2>&1 &
+    sleep 0.5
+    DISPLAY=":$DISP_NUM" "$HOME/.vnc/xstartup" &
+    sleep 0.5
+    x11vnc -display ":$DISP_NUM" -rfbport "$PORT" -rfbauth "$HOME/.vnc/passwd" -shared -forever -bg >/dev/null 2>&1
 fi
 
 # 9. Retrieve active IP address reliably

@@ -147,7 +147,7 @@ class WebDesktopManager(private val context: Context) {
         // Trigger startup cleanly via CLI execution (script uses file-lock to prevent race)
         val tlsFlag = if (useTls) "1" else "0"
         try {
-            runtimeEngine.executeCliCommand("/usr/local/share/ilynxos/wireless-desktop/start-web.sh $port '$safePass' $tlsFlag $dispNum 1280x720 &") { line ->
+            runtimeEngine.executeCliCommand("bash /usr/local/share/ilynxos/wireless-desktop/start-web.sh $port '$safePass' $tlsFlag $dispNum 1280x720 &") { line ->
                 Log.d(TAG, "[Web Output] $line")
             }
         } catch (e: Exception) {
@@ -188,7 +188,7 @@ class WebDesktopManager(private val context: Context) {
         } catch (_: Exception) {}
 
         val scriptPath = "/usr/local/share/ilynxos/wireless-desktop/stop-web.sh"
-        val cmd = "if [ -x $scriptPath ]; then $scriptPath; else pkill -9 -f websockify; fi"
+        val cmd = "if [ -f $scriptPath ]; then bash $scriptPath; else pkill -9 -f websockify; fi"
         try {
             runtimeEngine.executeCliCommand(cmd) { line ->
                 Log.d(TAG, "[Web Stop] $line")

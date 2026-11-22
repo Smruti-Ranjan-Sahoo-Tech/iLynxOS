@@ -729,42 +729,71 @@ WPEOF
 
             writeExecutableScript(File(localBin, "start-vnc"), """
                 #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}@"
+                exec bash /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(localBin, "vncstart"), """
                 #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}@"
+                exec bash /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(localBin, "stop-vnc"), """
                 #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh "${'$'}@"
+                exec bash /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(localBin, "vncstop"), """
                 #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh "${'$'}@"
+                exec bash /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(localBin, "start-web"), """
                 #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}@"
+                exec bash /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(localBin, "webstart"), """
                 #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}@"
+                exec bash /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(localBin, "stop-web"), """
                 #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/stop-web.sh "${'$'}@"
+                exec bash /usr/local/share/ilynxos/wireless-desktop/stop-web.sh "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(localBin, "webstop"), """
                 #!/bin/bash
-                exec /usr/local/share/ilynxos/wireless-desktop/stop-web.sh "${'$'}@"
+                exec bash /usr/local/share/ilynxos/wireless-desktop/stop-web.sh "${'$'}@"
+            """.trimIndent())
+
+            // Termux compatibility wrapper
+            try {
+                val termuxBin = File(rootfsDir, "data/data/com.termux/files/usr/bin")
+                termuxBin.mkdirs()
+                val termuxBash = File(termuxBin, "bash")
+                if (!termuxBash.exists()) {
+                    writeExecutableScript(termuxBash, "#!/bin/bash\nexec /bin/bash \"\$@\"\n")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Notice: could not create Termux bash wrapper: ${e.message}")
+            }
+
+            // Compatibility wrappers in /usr/local/bin (which precedes /usr/bin in PATH)
+            writeExecutableScript(File(localBin, "vncserver"), """
+                #!/bin/bash
+                if command -v tigervncserver >/dev/null 2>&1; then
+                    exec tigervncserver "${'$'}@"
+                fi
+                exec /usr/bin/tigervncserver "${'$'}@"
+            """.trimIndent())
+
+            writeExecutableScript(File(localBin, "Xvnc"), """
+                #!/bin/bash
+                if command -v Xtigervnc >/dev/null 2>&1; then
+                    exec Xtigervnc "${'$'}@"
+                fi
+                exec /usr/bin/Xtigervnc "${'$'}@"
             """.trimIndent())
 
             writeExecutableScript(File(localBin, "wireless-status"), """
