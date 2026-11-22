@@ -36,7 +36,7 @@ if [ "$VNC_ACTIVE" != "1" ]; then
             break
         fi
     done
-    command -v vncserver >/dev/null 2>&1 && vncserver -kill :1 2>/dev/null || true
+    pkill -9 -f "Xtigervnc.*:1" 2>/dev/null || true
     pkill -9 -f "Xvnc :1" 2>/dev/null || true
 fi
 

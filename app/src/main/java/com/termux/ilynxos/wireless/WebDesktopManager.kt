@@ -119,13 +119,13 @@ class WebDesktopManager(private val context: Context) {
 
         val dispNum = if (newSession) "1" else "0"
 
-        // Ensure desktop session and X11 server are active
+        // Ensure desktop session and X11 server are active only for display :0 (Mirror Mode)
         if (dispNum == "0" && !runtimeEngine.isSessionRunning()) {
-            Log.i(TAG, "Desktop session not running; starting LinuxSessionService...")
+            Log.i(TAG, "Desktop session not running; starting LinuxSessionService for display :0 mirror...")
             try {
                 com.termux.ilynxos.runtime.LinuxSessionService.startService(context)
                 val socketFile = File(envManager.tmpDir, ".X11-unix/X0")
-                for (i in 1..30) {
+                for (i in 1..40) {
                     if (socketFile.exists() && runtimeEngine.isSessionRunning()) {
                         Log.i(TAG, "Session and X11 socket verified ready for Web Mode")
                         break
@@ -135,19 +135,19 @@ class WebDesktopManager(private val context: Context) {
             } catch (e: Exception) {
                 Log.w(TAG, "Failed starting desktop session: ${e.message}")
             }
-        } else if (!runtimeEngine.isSessionRunning()) {
-            try {
-                com.termux.ilynxos.runtime.LinuxSessionService.startService(context)
-            } catch (_: Exception) {}
         }
 
         // Ensure wireless desktop scripts and noVNC/websockify unpacked
         envManager.unpackWirelessDesktopScripts()
 
-        // Trigger startup cleanly via CLI execution (script uses file-lock to prevent race)
         val tlsFlag = if (useTls) "1" else "0"
         try {
-            runtimeEngine.executeCliCommand("bash /usr/local/share/ilynxos/wireless-desktop/start-web.sh $port '$safePass' $tlsFlag $dispNum 1280x720 &") { line ->
+            val reqFile = File(envManager.tmpDir, "web_start.req")
+            reqFile.writeText("$port\n$safePass\n$tlsFlag\n$dispNum\n1280x720\n")
+        } catch (_: Exception) {}
+
+        try {
+            runtimeEngine.executeCliCommand("bash /usr/local/share/ilynxos/wireless-desktop/start-web.sh $port '$safePass' $tlsFlag $dispNum 1280x720") { line ->
                 Log.d(TAG, "[Web Output] $line")
             }
         } catch (e: Exception) {
@@ -156,7 +156,7 @@ class WebDesktopManager(private val context: Context) {
 
         // Poll for socket availability
         var socketOpen = false
-        for (i in 1..60) {
+        for (i in 1..100) {
             kotlinx.coroutines.delay(250)
             if (checkSocketListening(port)) {
                 Log.i(TAG, "Web Mode detected listening on port $port (attempt $i)")

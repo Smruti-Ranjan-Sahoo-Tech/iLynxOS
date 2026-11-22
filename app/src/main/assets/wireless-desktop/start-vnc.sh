@@ -75,15 +75,17 @@ echo " Display : :$DISP_NUM | Port : $PORT | Res : $RESOLUTION "
 echo "=========================================="
 
 # 4. Clean up any existing session / stale locks for this display
-command -v vncserver >/dev/null 2>&1 && vncserver -kill ":$DISP_NUM" >/dev/null 2>&1 || true
-command -v tigervncserver >/dev/null 2>&1 && tigervncserver -kill ":$DISP_NUM" >/dev/null 2>&1 || true
-pkill -9 -f "Xvnc :$DISP_NUM" >/dev/null 2>&1 || true
-pkill -9 -f "Xtigervnc.*:$DISP_NUM" >/dev/null 2>&1 || true
-pkill -9 -f "Xvfb :$DISP_NUM" >/dev/null 2>&1 || true
+if [ "$DISP_NUM" != "0" ]; then
+    command -v vncserver >/dev/null 2>&1 && vncserver -kill ":$DISP_NUM" >/dev/null 2>&1 || true
+    command -v tigervncserver >/dev/null 2>&1 && tigervncserver -kill ":$DISP_NUM" >/dev/null 2>&1 || true
+    pkill -9 -f "Xvnc :$DISP_NUM" >/dev/null 2>&1 || true
+    pkill -9 -f "Xtigervnc.*:$DISP_NUM" >/dev/null 2>&1 || true
+    pkill -9 -f "Xvfb :$DISP_NUM" >/dev/null 2>&1 || true
+    rm -rf "$TMPDIR/.X$DISP_NUM-lock" "$TMPDIR/.X11-unix/X$DISP_NUM" 2>/dev/null || true
+    rm -rf "/tmp/.X$DISP_NUM-lock" "/tmp/.X11-unix/X$DISP_NUM" 2>/dev/null || true
+fi
 pkill -9 -f "x11vnc.*:$DISP_NUM" 2>/dev/null || true
 pkill -9 -f "x11vnc.*-rfbport $PORT" 2>/dev/null || true
-rm -rf "$TMPDIR/.X$DISP_NUM-lock" "$TMPDIR/.X11-unix/X$DISP_NUM" 2>/dev/null || true
-rm -rf "/tmp/.X$DISP_NUM-lock" "/tmp/.X11-unix/X$DISP_NUM" 2>/dev/null || true
 sleep 0.2
 
 # 5. Ensure password is set (default: raja1234)
@@ -389,7 +391,7 @@ EXTRA_VNC_OPTS="-UseBlacklist=0 -BlacklistThreshold=0 -BlacklistTimeout=0 -local
 
 if [ "$DISP_NUM" = "0" ]; then
     echo "[VNC] Attaching x11vnc to active display :0 on port $PORT..."
-    x11vnc -display :0 -rfbport "$PORT" -rfbauth "$HOME/.vnc/passwd" -shared -forever -bg -noxdamage -repeat >/dev/null 2>&1
+    x11vnc -display :0 -auth none -noshm -rfbport "$PORT" -rfbauth "$HOME/.vnc/passwd" -shared -forever -bg -noxdamage -repeat >/dev/null 2>&1
 elif command -v vncserver >/dev/null 2>&1; then
     vncserver ":$DISP_NUM" -geometry "$RESOLUTION" -depth 24 -ac $EXTRA_VNC_OPTS
 elif command -v tigervncserver >/dev/null 2>&1; then

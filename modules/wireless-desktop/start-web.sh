@@ -172,12 +172,12 @@ if ! is_vnc_ready; then
         command -v tigervncserver >/dev/null 2>&1 && tigervncserver ":$DISP_NUM" -geometry "$RESOLUTION" -depth 24 -ac &
     fi
 
-    # Wait up to 10 seconds for VNC backend to become available
-    for i in $(seq 1 50); do
+    # Wait up to 25 seconds for VNC backend to become available
+    for i in $(seq 1 100); do
         if is_vnc_ready; then
             break
         fi
-        sleep 0.2
+        sleep 0.25
     done
 fi
 

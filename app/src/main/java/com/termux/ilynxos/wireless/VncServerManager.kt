@@ -115,13 +115,13 @@ class VncServerManager(private val context: Context) {
 
         val dispNum = if (newSession) "1" else "0"
 
-        // 1. Ensure desktop session and X11 server are active
+        // 1. Ensure desktop session and X11 server are active only for display :0 (Mirror Mode)
         if (dispNum == "0" && !runtimeEngine.isSessionRunning()) {
-            Log.i(TAG, "Desktop session not running; starting LinuxSessionService...")
+            Log.i(TAG, "Desktop session not running; starting LinuxSessionService for display :0 mirror...")
             try {
                 com.termux.ilynxos.runtime.LinuxSessionService.startService(context)
                 val socketFile = File(envManager.tmpDir, ".X11-unix/X0")
-                for (i in 1..30) {
+                for (i in 1..40) {
                     if (socketFile.exists() && runtimeEngine.isSessionRunning()) {
                         Log.i(TAG, "Session and X11 socket verified ready for VNC")
                         break
@@ -131,18 +131,20 @@ class VncServerManager(private val context: Context) {
             } catch (e: Exception) {
                 Log.w(TAG, "Failed starting desktop session: ${e.message}")
             }
-        } else if (!runtimeEngine.isSessionRunning()) {
-            try {
-                com.termux.ilynxos.runtime.LinuxSessionService.startService(context)
-            } catch (_: Exception) {}
         }
 
         // 2. Ensure wireless scripts unpacked
         envManager.unpackWirelessDesktopScripts()
 
-        // 3. Trigger startup cleanly via CLI execution (script uses file-lock to prevent race)
+        // 3. Write request for supervisor loop (if desktop session is running)
         try {
-            runtimeEngine.executeCliCommand("bash /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh $effectivePort '$safePass' $dispNum 1280x720 &") { line ->
+            val reqFile = File(envManager.tmpDir, "vnc_start.req")
+            reqFile.writeText("$effectivePort\n$safePass\n$dispNum\n1280x720\n")
+        } catch (_: Exception) {}
+
+        // 3b. Trigger startup via CLI execution
+        try {
+            runtimeEngine.executeCliCommand("bash /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh $effectivePort '$safePass' $dispNum 1280x720") { line ->
                 Log.d(TAG, "[VNC Output] $line")
             }
         } catch (e: Exception) {
@@ -151,7 +153,7 @@ class VncServerManager(private val context: Context) {
 
         // 4. Poll for socket availability
         var socketOpen = false
-        for (i in 1..60) {
+        for (i in 1..100) {
             kotlinx.coroutines.delay(250)
             if (checkSocketListening(effectivePort)) {
                 Log.i(TAG, "VNC server detected listening on port $effectivePort (attempt $i)")
@@ -181,7 +183,7 @@ class VncServerManager(private val context: Context) {
         } catch (_: Exception) {}
 
         try {
-            runtimeEngine.executeCliCommand("bash /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh &") { line ->
+            runtimeEngine.executeCliCommand("bash /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh") { line ->
                 Log.d(TAG, "[VNC Stop] $line")
             }
         } catch (_: Exception) {}
