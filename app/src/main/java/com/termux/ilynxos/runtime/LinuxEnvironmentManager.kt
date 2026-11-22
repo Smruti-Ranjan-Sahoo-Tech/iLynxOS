@@ -365,27 +365,54 @@ class LinuxEnvironmentManager(private val context: Context) {
                 done
 
                 # 4. Set background and pre-configure PCManFM-Qt wallpaper configs
-                WALLPAPER="/usr/share/backgrounds/windows-11-bloom-dark.jpg"
-                if [ ! -f "${'$'}WALLPAPER" ]; then
-                    [ -f "/usr/share/backgrounds/ilynx-wallpaper.png" ] && WALLPAPER="/usr/share/backgrounds/ilynx-wallpaper.png"
-                    if [ ! -f "${'$'}WALLPAPER" ]; then
-                        FOUND_WALLPAPER=${'$'}(find /usr/share/backgrounds /usr/share/wallpapers -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null | head -n 1)
-                        [ -n "${'$'}FOUND_WALLPAPER" ] && WALLPAPER="${'$'}FOUND_WALLPAPER"
+                WALLPAPER=""
+                for wp in \
+                    "/usr/share/backgrounds/windows-11-bloom-dark.jpg" \
+                    "/usr/share/backgrounds/ilynx-wallpaper.png" \
+                    "/usr/share/backgrounds/dark-abstract-flow.jpg" \
+                    "/usr/share/backgrounds/honda-ev-cyberpunk.jpg" \
+                    "/usr/share/backgrounds/windows-11-bloom-light.jpg" \
+                    "/usr/share/backgrounds/xfce/xfce-blue.jpg"; do
+                    if [ -f "${'$'}wp" ]; then
+                        WALLPAPER="${'$'}wp"
+                        break
                     fi
+                done
+                if [ -z "${'$'}WALLPAPER" ]; then
+                    WALLPAPER=${'$'}(find /usr/share/backgrounds /usr/share/wallpapers -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null | head -n 1)
                 fi
 
                 # Ensure desktop directory exists and shortcuts are executable
                 mkdir -p /root/Desktop /root/.config 2>/dev/null || true
                 chmod +x /root/Desktop/*.desktop 2>/dev/null || true
 
-                # Generate desktop-items config for all RandR monitor outputs (0, 1, screen, default, Screen0, etc.)
-                for dir in /root/.config/pcmanfm-qt/lxqt /root/.config/pcmanfm-qt/default /etc/xdg/pcmanfm-qt/default /etc/xdg/pcmanfm-qt/lxqt; do
+                # Generate desktop-items config and settings.conf for all RandR monitor outputs (0, 1, VNC-0, screen, default, Screen0, etc.)
+                for dir in /root/.config/pcmanfm-qt/lxqt /root/.config/pcmanfm-qt/vnc /root/.config/pcmanfm-qt/default /etc/xdg/pcmanfm-qt/default /etc/xdg/pcmanfm-qt/lxqt; do
                     mkdir -p "${'$'}dir" 2>/dev/null || true
-                    for conf in desktop-items-0.conf desktop-items-1.conf desktop-items-default.conf desktop-items-screen.conf desktop-items-screen0.conf desktop-items-Screen0.conf desktop-items-SCREEN.conf desktop-items-None.conf desktop-items-VIRTUAL1.conf; do
+                    cat << SETEOF > "${'$'}dir/settings.conf"
+[Behavior]
+SingleClick=true
+ConfirmDelete=true
+QuickExec=true
+
+[Desktop]
+Wallpaper=${'$'}WALLPAPER
+WallpaperMode=zoom
+PerScreenWallpaper=false
+TransformWallpaper=true
+DesktopIconSize=48
+WorkAreaMargins=12, 12, 12, 12
+BgColor=#1e1e2e
+FgColor=#ffffff
+
+[FolderView]
+Mode=icon
+SETEOF
+                    for conf in desktop-items-0.conf desktop-items-1.conf desktop-items-VNC-0.conf desktop-items-VNC-1.conf desktop-items-default.conf desktop-items-screen.conf desktop-items-screen0.conf desktop-items-Screen0.conf desktop-items-SCREEN.conf desktop-items-None.conf desktop-items-VIRTUAL1.conf desktop-items.conf; do
                         cat << WPEOF > "${'$'}dir/${'$'}conf"
 [General]
 wallpaper=${'$'}WALLPAPER
-wallpaper_mode=crop
+wallpaper_mode=zoom
 show_wm_menu=false
 sort_type=0
 sort_by=0
@@ -402,20 +429,37 @@ WPEOF
                 done
 
                 # Ensure settings.conf enables wallpaper and SingleClick
-                for dir in /root/.config/pcmanfm-qt/lxqt /root/.config/pcmanfm-qt/default; do
+                for dir in /root/.config/pcmanfm-qt/lxqt /root/.config/pcmanfm-qt/vnc /root/.config/pcmanfm-qt/default; do
                     if [ -f "${'$'}dir/settings.conf" ]; then
                         sed -i "s|Wallpaper=.*|Wallpaper=${'$'}WALLPAPER|g" "${'$'}dir/settings.conf" 2>/dev/null || true
-                        sed -i "s|WallpaperMode=.*|WallpaperMode=crop|g" "${'$'}dir/settings.conf" 2>/dev/null || true
+                        sed -i "s|WallpaperMode=.*|WallpaperMode=zoom|g" "${'$'}dir/settings.conf" 2>/dev/null || true
+                        sed -i "s|PerScreenWallpaper=true|PerScreenWallpaper=false|g" "${'$'}dir/settings.conf" 2>/dev/null || true
                         sed -i "s|BgColor=.*|BgColor=#1e1e2e|g" "${'$'}dir/settings.conf" 2>/dev/null || true
                         sed -i "s|SingleClick=false|SingleClick=true|g" "${'$'}dir/settings.conf" 2>/dev/null || true
                     fi
                 done
 
-                if command -v feh >/dev/null 2>&1 && [ -f "${'$'}WALLPAPER" ]; then
-                    feh --bg-fill "${'$'}WALLPAPER" 2>/dev/null || true
-                elif command -v xsetroot >/dev/null 2>&1; then
-                    xsetroot -solid "#1e1e2e" 2>/dev/null || true
+                # Pre-generate PCManFM-Qt wallpaper cache so desktop never flashes black
+                if [ -n "${'$'}WALLPAPER" ] && [ -f "${'$'}WALLPAPER" ]; then
+                    for cache_dir in /root/.cache/pcmanfm-qt/lxqt /root/.cache/pcmanfm-qt/default /root/.cache/pcmanfm-qt/vnc; do
+                        mkdir -p "${'$'}cache_dir" 2>/dev/null || true
+                        if command -v convert >/dev/null 2>&1; then
+                            convert "${'$'}WALLPAPER" -resize 1280x720^ -gravity center -extent 1280x720 "${'$'}cache_dir/wallpaper.cache" 2>/dev/null || cp -f "${'$'}WALLPAPER" "${'$'}cache_dir/wallpaper.cache" 2>/dev/null || true
+                        else
+                            cp -f "${'$'}WALLPAPER" "${'$'}cache_dir/wallpaper.cache" 2>/dev/null || true
+                        fi
+                        echo "${'$'}WALLPAPER" > "${'$'}cache_dir/wallpaper.cache.info" 2>/dev/null || true
+                        date +%Y-%m-%d-%H:%M:%S.%3N >> "${'$'}cache_dir/wallpaper.cache.info" 2>/dev/null || true
+                    done
+
+                    # Apply wallpaper immediately to root window
+                    if command -v display >/dev/null 2>&1; then
+                        display -window root -backdrop "${'$'}WALLPAPER" >/dev/null 2>&1 &
+                    elif command -v feh >/dev/null 2>&1; then
+                        feh --bg-fill "${'$'}WALLPAPER" 2>/dev/null || true
+                    fi
                 fi
+                xsetroot -cursor_name left_ptr -solid "#1e1e2e" 2>/dev/null || true
 
                 # 5. Launch Openbox Window Manager
                 if command -v openbox >/dev/null 2>&1; then
@@ -430,12 +474,14 @@ WPEOF
                 # 6. Launch Desktop Manager (wallpaper and desktop icons)
                 if command -v pcmanfm-qt >/dev/null 2>&1; then
                     pcmanfm-qt --desktop --profile=lxqt &
-                    # Actively force wallpaper paint via IPC
+                    # Actively force wallpaper paint via IPC and helper
                     (
                         sleep 1
-                        pcmanfm-qt --set-wallpaper="${'$'}WALLPAPER" --wallpaper-mode=crop --profile=lxqt >/dev/null 2>&1 || true
-                        sleep 2
-                        pcmanfm-qt --set-wallpaper="${'$'}WALLPAPER" --wallpaper-mode=crop --profile=lxqt >/dev/null 2>&1 || true
+                        if [ -x /usr/local/bin/set-wallpaper ] && [ -n "${'$'}WALLPAPER" ]; then
+                            /usr/local/bin/set-wallpaper "${'$'}WALLPAPER" zoom >/dev/null 2>&1 || true
+                        fi
+                        pcmanfm-qt --profile=lxqt -w "${'$'}WALLPAPER" --wallpaper-mode=zoom >/dev/null 2>&1 || true
+                        pcmanfm-qt -w "${'$'}WALLPAPER" --wallpaper-mode=zoom >/dev/null 2>&1 || true
                     ) &
                 fi
 
@@ -582,7 +628,7 @@ WPEOF
                 val desktopItemsConfig = """
                     [General]
                     wallpaper=/usr/share/backgrounds/windows-11-bloom-dark.jpg
-                    wallpaper_mode=crop
+                    wallpaper_mode=zoom
                     show_wm_menu=false
                     sort_type=0
                     sort_by=0
@@ -597,7 +643,7 @@ WPEOF
                 """.trimIndent()
 
                 listOf(lxqtConfDir, vncConfDir, defaultConfDir, etcDefaultConfDir, etcLxqtConfDir).forEach { dir ->
-                    listOf("desktop-items-0.conf", "desktop-items-1.conf", "desktop-items-default.conf", "desktop-items-screen.conf", "desktop-items-screen0.conf", "desktop-items-VIRTUAL1.conf").forEach { filename ->
+                    listOf("desktop-items-0.conf", "desktop-items-1.conf", "desktop-items-VNC-0.conf", "desktop-items-VNC-1.conf", "desktop-items-default.conf", "desktop-items-screen.conf", "desktop-items-screen0.conf", "desktop-items-Screen0.conf", "desktop-items-SCREEN.conf", "desktop-items-None.conf", "desktop-items-VIRTUAL1.conf").forEach { filename ->
                         val target = File(dir, filename)
                         target.writeText(desktopItemsConfig)
                         target.setReadable(true, false)
@@ -615,14 +661,16 @@ WPEOF
                     }
                 }
 
-                // Update settings.conf to enable SingleClick and set wallpaper
-                listOf(lxqtConfDir, vncConfDir).forEach { dir ->
+                // Update settings.conf to enable SingleClick, zoom wallpaper mode and disable PerScreenWallpaper
+                listOf(lxqtConfDir, vncConfDir, defaultConfDir).forEach { dir ->
                     val settingsFile = File(dir, "settings.conf")
                     if (settingsFile.exists()) {
                         var content = settingsFile.readText()
                         content = content.replace("SingleClick=false", "SingleClick=true")
                         content = content.replace("Wallpaper=", "Wallpaper=/usr/share/backgrounds/windows-11-bloom-dark.jpg")
-                        content = content.replace("WallpaperMode=none", "WallpaperMode=crop")
+                        content = content.replace("WallpaperMode=none", "WallpaperMode=zoom")
+                        content = content.replace("WallpaperMode=crop", "WallpaperMode=zoom")
+                        content = content.replace("PerScreenWallpaper=true", "PerScreenWallpaper=false")
                         content = content.replace("BgColor=#000000", "BgColor=#1e1e2e")
                         settingsFile.writeText(content)
                     }
@@ -752,6 +800,26 @@ WPEOF
                 exec /usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh "${'$'}@"
             """.trimIndent())
 
+            writeExecutableScript(File(rootDir, "webstart.sh"), """
+                #!/bin/bash
+                exec /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}@"
+            """.trimIndent())
+
+            writeExecutableScript(File(rootDir, "webstop.sh"), """
+                #!/bin/bash
+                exec /usr/local/share/ilynxos/wireless-desktop/stop-web.sh "${'$'}@"
+            """.trimIndent())
+
+            writeExecutableScript(File(rootDir, "web-start.sh"), """
+                #!/bin/bash
+                exec /usr/local/share/ilynxos/wireless-desktop/start-web.sh "${'$'}@"
+            """.trimIndent())
+
+            writeExecutableScript(File(rootDir, "web-stop.sh"), """
+                #!/bin/bash
+                exec /usr/local/share/ilynxos/wireless-desktop/stop-web.sh "${'$'}@"
+            """.trimIndent())
+
             // Setup default ~/.vnc/xstartup
             val vncConfigDir = File(rootDir, ".vnc")
             vncConfigDir.mkdirs()
@@ -760,7 +828,7 @@ WPEOF
                 #!/bin/bash
                 unset SESSION_MANAGER
                 unset DBUS_SESSION_BUS_ADDRESS
-                export DISPLAY=:1
+                export DISPLAY=${'$'}{DISPLAY:-:1}
                 export HOME=/root
                 export USER=root
                 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${'$'}PATH
@@ -781,19 +849,76 @@ WPEOF
                 dbus-uuidgen --ensure 2>/dev/null || true
                 eval ${'$'}(dbus-launch --sh-syntax --exit-with-session) 2>/dev/null || true
 
-                WALLPAPER="/usr/share/backgrounds/windows-11-bloom-dark.jpg"
-                if [ ! -f "${'$'}WALLPAPER" ]; then
-                    FOUND=${'$'}(find /usr/share/backgrounds /usr/share/wallpapers -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null | head -n 1)
-                    [ -n "${'$'}FOUND" ] && WALLPAPER="${'$'}FOUND"
+                WALLPAPER=""
+                for wp in \
+                    "/usr/share/backgrounds/windows-11-bloom-dark.jpg" \
+                    "/usr/share/backgrounds/ilynx-wallpaper.png" \
+                    "/usr/share/backgrounds/dark-abstract-flow.jpg" \
+                    "/usr/share/backgrounds/honda-ev-cyberpunk.jpg" \
+                    "/usr/share/backgrounds/windows-11-bloom-light.jpg" \
+                    "/usr/share/backgrounds/xfce/xfce-blue.jpg"; do
+                    if [ -f "${'$'}wp" ]; then
+                        WALLPAPER="${'$'}wp"
+                        break
+                    fi
+                done
+                if [ -z "${'$'}WALLPAPER" ]; then
+                    WALLPAPER=${'$'}(find /usr/share/backgrounds /usr/share/wallpapers -type f \( -name "*.jpg" -o -name "*.png" \) 2>/dev/null | head -n 1)
                 fi
 
-                if command -v feh >/dev/null 2>&1 && [ -f "${'$'}WALLPAPER" ]; then
-                    feh --bg-fill "${'$'}WALLPAPER" 2>/dev/null || true
-                elif command -v hsetroot >/dev/null 2>&1 && [ -f "${'$'}WALLPAPER" ]; then
-                    hsetroot -fill "${'$'}WALLPAPER" 2>/dev/null || true
-                elif command -v xsetroot >/dev/null 2>&1; then
-                    xsetroot -solid "#1e1e2e" 2>/dev/null || true
+                for d in /root/.config/pcmanfm-qt/lxqt /root/.config/pcmanfm-qt/vnc /root/.config/pcmanfm-qt/default /etc/xdg/pcmanfm-qt/lxqt /etc/xdg/pcmanfm-qt/default; do
+                    mkdir -p "${'$'}d" 2>/dev/null || true
+                    cat << SETEOF > "${'$'}d/settings.conf"
+[Behavior]
+SingleClick=true
+ConfirmDelete=true
+QuickExec=true
+
+[Desktop]
+Wallpaper=${'$'}WALLPAPER
+WallpaperMode=zoom
+PerScreenWallpaper=false
+TransformWallpaper=true
+DesktopIconSize=48
+WorkAreaMargins=12, 12, 12, 12
+BgColor=#1e1e2e
+FgColor=#ffffff
+
+[FolderView]
+Mode=icon
+SETEOF
+                    for conf in desktop-items-0.conf desktop-items-1.conf desktop-items-VNC-0.conf desktop-items-VNC-1.conf desktop-items-default.conf desktop-items-screen.conf desktop-items-screen0.conf desktop-items-Screen0.conf desktop-items-SCREEN.conf desktop-items-None.conf desktop-items-VIRTUAL1.conf desktop-items.conf; do
+                        cat << WPEOF > "${'$'}d/${'$'}conf"
+[General]
+wallpaper=${'$'}WALLPAPER
+wallpaper_mode=zoom
+show_wm_menu=false
+sort_type=0
+sort_by=0
+WPEOF
+                    done
+                done
+
+                # Pre-generate PCManFM-Qt wallpaper cache
+                if [ -n "${'$'}WALLPAPER" ] && [ -f "${'$'}WALLPAPER" ]; then
+                    for cache_dir in /root/.cache/pcmanfm-qt/lxqt /root/.cache/pcmanfm-qt/vnc /root/.cache/pcmanfm-qt/default; do
+                        mkdir -p "${'$'}cache_dir" 2>/dev/null || true
+                        if command -v convert >/dev/null 2>&1; then
+                            convert "${'$'}WALLPAPER" -resize 1280x720^ -gravity center -extent 1280x720 "${'$'}cache_dir/wallpaper.cache" 2>/dev/null || cp -f "${'$'}WALLPAPER" "${'$'}cache_dir/wallpaper.cache" 2>/dev/null || true
+                        else
+                            cp -f "${'$'}WALLPAPER" "${'$'}cache_dir/wallpaper.cache" 2>/dev/null || true
+                        fi
+                        echo "${'$'}WALLPAPER" > "${'$'}cache_dir/wallpaper.cache.info" 2>/dev/null || true
+                        date +%Y-%m-%d-%H:%M:%S.%3N >> "${'$'}cache_dir/wallpaper.cache.info" 2>/dev/null || true
+                    done
+
+                    if command -v display >/dev/null 2>&1; then
+                        display -window root -backdrop "${'$'}WALLPAPER" >/dev/null 2>&1 &
+                    elif command -v feh >/dev/null 2>&1; then
+                        feh --bg-fill "${'$'}WALLPAPER" 2>/dev/null || true
+                    fi
                 fi
+                xsetroot -cursor_name left_ptr -solid "#1e1e2e" 2>/dev/null || true
 
                 if command -v openbox >/dev/null 2>&1; then
                     if [ -f "/root/.config/openbox/rc.xml" ]; then
@@ -805,7 +930,7 @@ WPEOF
                 sleep 0.2
 
                 if command -v pcmanfm-qt >/dev/null 2>&1; then
-                    pcmanfm-qt --desktop --profile=vnc >/dev/null 2>&1 &
+                    pcmanfm-qt --desktop --profile=lxqt >/dev/null 2>&1 &
                 fi
                 sleep 0.2
 
@@ -818,7 +943,11 @@ WPEOF
                 if command -v pcmanfm-qt >/dev/null 2>&1 && [ -f "${'$'}WALLPAPER" ]; then
                     (
                         sleep 1
-                        pcmanfm-qt --set-wallpaper="${'$'}WALLPAPER" --wallpaper-mode=crop --profile=vnc >/dev/null 2>&1 || true
+                        if [ -x /usr/local/bin/set-wallpaper ] && [ -n "${'$'}WALLPAPER" ]; then
+                            /usr/local/bin/set-wallpaper "${'$'}WALLPAPER" zoom >/dev/null 2>&1 || true
+                        fi
+                        pcmanfm-qt --profile=lxqt -w "${'$'}WALLPAPER" --wallpaper-mode=zoom >/dev/null 2>&1 || true
+                        pcmanfm-qt -w "${'$'}WALLPAPER" --wallpaper-mode=zoom >/dev/null 2>&1 || true
                     ) &
                 fi
 

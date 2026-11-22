@@ -373,11 +373,11 @@ The following benchmarks were conducted on a reference device (Snapdragon 8 Gen 
 </details>
 
 <details>
-<summary><b>3. Black screen on virtual display :1</b></summary>
+<summary><b>3. Black screen on virtual display :1 or Desktop</b></summary>
 
-- Run `/usr/local/share/ilynxos/wireless-desktop/stop-vnc.sh` and restart the session.
-- Verify wallpaper file presence: `/usr/share/backgrounds/windows-11-bloom-dark.jpg`.
-- Check that `Xvfb` is running: `pgrep -a -f Xvfb`.
+- Restart the session using `vncstop && vncstart` or `webstop && webstart`.
+- iLynxOS dynamically checks and pre-generates wallpaper cache (`/root/.cache/pcmanfm-qt/lxqt/wallpaper.cache`) across bloom-dark, ilynx-wallpaper, dark-abstract-flow, and xfce themes.
+- Check that Xvnc or embedded X11 is running: `pgrep -a -f "Xvnc\|termux-x11"`.
 </details>
 
 <details>

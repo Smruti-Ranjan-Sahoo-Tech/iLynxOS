@@ -1,23 +1,40 @@
-#!/bin/bash
+#!/data/data/com.termux/files/usr/bin/bash
+[ ! -x "/data/data/com.termux/files/usr/bin/bash" ] && exec /bin/bash "$0" "$@"
 # =======================================================
 # i-Lynx OS 1.0 - Remote VNC Desktop Stopper
 # =======================================================
 
-echo "Stopping i-Lynx OS VNC Server..."
-command -v vncserver >/dev/null 2>&1 && vncserver -kill :1 2>/dev/null || true
-pkill -9 -f "Xvnc :1" 2>/dev/null || true
-pkill -9 -f "Xvnc" 2>/dev/null || true
-pkill -9 -f "x11vnc.*:1" 2>/dev/null || true
-pkill -9 -f "pcmanfm-qt.*vnc" 2>/dev/null || true
+TARGET_DISP="$1"
+TMPDIR="${TMPDIR:-/data/data/com.termux/files/usr/tmp}"
+[ ! -d "$TMPDIR" ] && TMPDIR="/tmp"
 
-# If Web Mode is also not running, clean up desktop session and locks
-if ! pgrep -f "websockify" >/dev/null 2>&1; then
-    pkill -9 -f "openbox.*:1" 2>/dev/null || true
-    pkill -9 -f "Xvfb :1" 2>/dev/null || true
-    rm -rf /tmp/.X11-unix/X1 /tmp/.X1-lock "$TMPDIR/.X11-unix/X1" "$TMPDIR/.X1-lock" 2>/dev/null || true
+echo "Stopping i-Lynx OS VNC Server..."
+
+if [ -n "$TARGET_DISP" ]; then
+    DISP_NUM="${TARGET_DISP#:}"
+    command -v vncserver >/dev/null 2>&1 && vncserver -kill ":$DISP_NUM" 2>/dev/null || true
+    pkill -9 -f "Xvnc :$DISP_NUM" 2>/dev/null || true
+    pkill -9 -f "x11vnc.*:$DISP_NUM" 2>/dev/null || true
+    rm -rf "$TMPDIR/.X$DISP_NUM-lock" "$TMPDIR/.X11-unix/X$DISP_NUM" 2>/dev/null || true
+    rm -rf "/tmp/.X$DISP_NUM-lock" "/tmp/.X11-unix/X$DISP_NUM" 2>/dev/null || true
+else
+    for d in 1 2 3 4 5; do
+        command -v vncserver >/dev/null 2>&1 && vncserver -kill ":$d" 2>/dev/null || true
+    done
+    pkill -9 -f "Xvnc" 2>/dev/null || true
+    pkill -9 -f "x11vnc" 2>/dev/null || true
+    rm -rf "$TMPDIR"/.X*-lock "$TMPDIR"/.X11-unix/X* 2>/dev/null || true
+    rm -rf /tmp/.X*-lock /tmp/.X11-unix/X* 2>/dev/null || true
 fi
 
-rm -f /var/run/x11vnc.pid /var/run/vnc_display.txt /tmp/vnc_start.req /tmp/vnc.status /tmp/start-vnc-*.lock 2>/dev/null || true
+pkill -9 -f "lxqt-panel" 2>/dev/null || true
+pkill -9 -f "pcmanfm-qt" 2>/dev/null || true
+pkill -9 -f "openbox" 2>/dev/null || true
+pkill -9 -f "lxqt-notificationd" 2>/dev/null || true
+pkill -9 -f "snap-daemon" 2>/dev/null || true
+
+rm -rf ~/.dbus /tmp/start-vnc-*.lock /var/run/x11vnc.pid /tmp/vnc.status 2>/dev/null || true
+command -v termux-wake-unlock >/dev/null 2>&1 && termux-wake-unlock 2>/dev/null || true
 
 echo "✅ VNC Server stopped successfully."
 exit 0
