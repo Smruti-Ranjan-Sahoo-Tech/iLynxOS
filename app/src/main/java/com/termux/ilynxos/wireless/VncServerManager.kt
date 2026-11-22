@@ -43,8 +43,8 @@ class VncServerManager(private val context: Context) {
 
     init {
         val pass = prefs.getString(KEY_PASSWORD, "") ?: ""
-        if (pass.isEmpty() || pass.startsWith("ilynx") || pass == "raja1234") {
-            setPassword("ilinux1719")
+        if (pass.isEmpty() || pass.startsWith("ilynx") || pass == "ilinux1719") {
+            setPassword("raja1234")
         }
     }
 
@@ -57,9 +57,9 @@ class VncServerManager(private val context: Context) {
 
     fun getPassword(): String {
         val pass = prefs.getString(KEY_PASSWORD, "") ?: ""
-        if (pass.isEmpty() || pass.startsWith("ilynx") || pass == "raja1234") {
-            setPassword("ilinux1719")
-            return "ilinux1719"
+        if (pass.isEmpty() || pass.startsWith("ilynx") || pass == "ilinux1719") {
+            setPassword("raja1234")
+            return "raja1234"
         }
         return pass
     }
@@ -105,7 +105,7 @@ class VncServerManager(private val context: Context) {
             return@withContext false
         }
 
-        val safePass = if (password.isEmpty() || password.startsWith("ilynx") || password == "raja1234") "ilinux1719" else password
+        val safePass = if (password.isEmpty() || password.startsWith("ilynx") || password == "ilinux1719") "raja1234" else password
         val effectivePort = if (newSession && port == 5900) 5901 else if (!newSession && port == 5901) 5900 else port
         setPort(effectivePort)
         setPassword(safePass)

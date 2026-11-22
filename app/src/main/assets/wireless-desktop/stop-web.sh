@@ -9,7 +9,7 @@ pkill -9 -f "python3 -m websockify" 2>/dev/null || true
 rm -f /var/run/websockify.pid /tmp/web_start.req /tmp/web.status /tmp/start-web.lock 2>/dev/null || true
 
 # If standalone VNC server is also not running, clean up the VNC desktop session
-if ! pgrep -f "x11vnc" >/dev/null 2>&1 && [ ! -f "/tmp/vnc.status" ]; then
+if ! pgrep -f "Xvnc" >/dev/null 2>&1 && [ ! -f "/tmp/vnc.status" ]; then
     SCRIPT_DIR="/usr/local/share/ilynxos/wireless-desktop"
     if [ -x "$SCRIPT_DIR/stop-vnc.sh" ]; then
         "$SCRIPT_DIR/stop-vnc.sh" 2>/dev/null || true

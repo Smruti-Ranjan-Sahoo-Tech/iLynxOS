@@ -305,7 +305,7 @@ No software installation required on the client device.
 3. Toggle **Dedicated Virtual Desktop (:1)** and tap **Start Web**.
 4. On your PC, laptop, or tablet browser, open:
    ```text
-   http://<PHONE_IP>:14500/vnc.html?autoconnect=true&resize=scale&password=ilinux1719
+   http://<PHONE_IP>:14500/vnc.html?autoconnect=true&resize=scale&password=raja1234
    ```
 5. A full desktop session appears in your browser tab with full keyboard, mouse, and clipboard support.
 
@@ -317,7 +317,7 @@ Recommended for latency-critical tasks and daily PC workstation use.
    - **TigerVNC:** `vncviewer <PHONE_IP>:5901`
    - **RealVNC Viewer:** Connect to `<PHONE_IP>:5901`
    - **Remmina (Linux):** Connect via VNC to `<PHONE_IP>:5901`
-3. Enter password: `ilinux1719` (or your configured custom password).
+3. Enter password: `raja1234` (or your configured custom password).
 4. **Features in VNC Mode:**
    - Dedicated 24-bit virtual canvas.
    - PC mouse cursor rendered smoothly via hardware tracking (`-cursor arrow`).

@@ -477,25 +477,20 @@ WPEOF
                     while true; do
                         if [ -f "/tmp/vnc_start.req" ]; then
                             VNC_PORT=${'$'}(head -n 1 /tmp/vnc_start.req 2>/dev/null || echo "5901")
-                            VNC_PASS=${'$'}(sed -n '2p' /tmp/vnc_start.req 2>/dev/null || echo "ilinux1719")
+                            VNC_PASS=${'$'}(sed -n '2p' /tmp/vnc_start.req 2>/dev/null || echo "raja1234")
                             VNC_DISP=${'$'}(sed -n '3p' /tmp/vnc_start.req 2>/dev/null || echo "1")
                             rm -f /tmp/vnc_start.req
                             if [ -x "/usr/local/share/ilynxos/wireless-desktop/start-vnc.sh" ]; then
                                 /usr/local/share/ilynxos/wireless-desktop/start-vnc.sh "${'$'}VNC_PORT" "${'$'}VNC_PASS" "${'$'}VNC_DISP" 1280x720 &
                             else
                                 command -v vncserver >/dev/null 2>&1 && vncserver ":${'$'}VNC_DISP" -geometry 1280x720 -depth 24 -ac 2>/dev/null || true
-                                pkill -9 -f x11vnc 2>/dev/null || true
+                                pkill -9 -f "Xvnc :${'$'}VNC_DISP" 2>/dev/null || true
                                 sleep 0.2
                                 mkdir -p /root/.vnc
                                 if [ -n "${'$'}VNC_PASS" ]; then
                                     printf "%s\n%s\nn\n" "${'$'}VNC_PASS" "${'$'}VNC_PASS" | vncpasswd >/dev/null 2>&1
-                                    x11vnc -storepasswd "${'$'}VNC_PASS" /root/.vnc/passwd 2>/dev/null
                                     chmod 600 /root/.vnc/passwd 2>/dev/null || true
-                                    AUTH_ARG="-rfbauth /root/.vnc/passwd"
-                                else
-                                    AUTH_ARG="-nopw"
                                 fi
-                                x11vnc -display ":${'$'}VNC_DISP" -rfbport "${'$'}VNC_PORT" -listen 0.0.0.0 ${'$'}AUTH_ARG -forever -shared -repeat -noshm -bg -o /var/log/x11vnc.log 2>&1
                             fi
                             echo "1" > /tmp/vnc.status
                         fi
@@ -507,15 +502,14 @@ WPEOF
                             else
                                 command -v vncserver >/dev/null 2>&1 && vncserver -kill :1 2>/dev/null || true
                                 pkill -9 -f "Xvnc :1" 2>/dev/null || true
-                                pkill -9 -f x11vnc 2>/dev/null || true
-                                rm -f /var/run/x11vnc.pid
+                                pkill -9 -f "Xvnc" 2>/dev/null || true
                             fi
                             echo "0" > /tmp/vnc.status
                         fi
 
                         if [ -f "/tmp/web_start.req" ]; then
                             WEB_PORT=${'$'}(head -n 1 /tmp/web_start.req 2>/dev/null || echo "14500")
-                            WEB_PASS=${'$'}(sed -n '2p' /tmp/web_start.req 2>/dev/null || echo "ilinux1719")
+                            WEB_PASS=${'$'}(sed -n '2p' /tmp/web_start.req 2>/dev/null || echo "raja1234")
                             USE_TLS=${'$'}(sed -n '3p' /tmp/web_start.req 2>/dev/null || echo "0")
                             WEB_DISP=${'$'}(sed -n '4p' /tmp/web_start.req 2>/dev/null || echo "1")
                             rm -f /tmp/web_start.req
